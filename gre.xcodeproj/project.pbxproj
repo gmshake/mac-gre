@@ -1,0 +1,290 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 45;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		32A4FEBC0562C75700D090E7 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C167DFE841241C02AAC07 /* InfoPlist.strings */; };
+		32A4FEBE0562C75700D090E7 /* gre.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A224C3CFF42312311CA2CB7 /* gre.c */; settings = {ATTRIBUTES = (); }; };
+		59059268129E8B5900E567E9 /* gre_if.h in Headers */ = {isa = PBXBuildFile; fileRef = 59059266129E8B5900E567E9 /* gre_if.h */; };
+		59059269129E8B5900E567E9 /* gre_if.c in Sources */ = {isa = PBXBuildFile; fileRef = 59059267129E8B5900E567E9 /* gre_if.c */; };
+		591E748812A5429A0054922E /* gre_ipfilter.h in Headers */ = {isa = PBXBuildFile; fileRef = 591E748612A5429A0054922E /* gre_ipfilter.h */; };
+		591E748912A5429A0054922E /* gre_ipfilter.c in Sources */ = {isa = PBXBuildFile; fileRef = 591E748712A5429A0054922E /* gre_ipfilter.c */; };
+		5927A9F712B5293900E4DED1 /* Welcome.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 5927A9F612B5293900E4DED1 /* Welcome.rtf */; };
+		5927A9F912B5294C00E4DED1 /* ReadMe.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 5927A9F812B5294C00E4DED1 /* ReadMe.rtf */; };
+		5927A9FB12B5295C00E4DED1 /* License.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 5927A9FA12B5295C00E4DED1 /* License.rtf */; };
+		595C460112B66EA700A64934 /* postinstall.sh in Resources */ = {isa = PBXBuildFile; fileRef = 595C460012B66EA700A64934 /* postinstall.sh */; };
+		59F8225712A008E1008B174C /* gre_debug.h in Headers */ = {isa = PBXBuildFile; fileRef = 59F8225612A008E1008B174C /* gre_debug.h */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		089C167EFE841241C02AAC07 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		1A224C3CFF42312311CA2CB7 /* gre.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gre.c; sourceTree = "<group>"; };
+		32A4FEC30562C75700D090E7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		32A4FEC40562C75800D090E7 /* GRE.kext */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GRE.kext; sourceTree = BUILT_PRODUCTS_DIR; };
+		59059266129E8B5900E567E9 /* gre_if.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gre_if.h; sourceTree = "<group>"; };
+		59059267129E8B5900E567E9 /* gre_if.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gre_if.c; sourceTree = "<group>"; };
+		591E748612A5429A0054922E /* gre_ipfilter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gre_ipfilter.h; sourceTree = "<group>"; };
+		591E748712A5429A0054922E /* gre_ipfilter.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gre_ipfilter.c; sourceTree = "<group>"; };
+		5927A9F612B5293900E4DED1 /* Welcome.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; path = Welcome.rtf; sourceTree = "<group>"; };
+		5927A9F812B5294C00E4DED1 /* ReadMe.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; path = ReadMe.rtf; sourceTree = "<group>"; };
+		5927A9FA12B5295C00E4DED1 /* License.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; path = License.rtf; sourceTree = "<group>"; };
+		595C460012B66EA700A64934 /* postinstall.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = postinstall.sh; sourceTree = "<group>"; };
+		59F8225612A008E1008B174C /* gre_debug.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gre_debug.h; sourceTree = "<group>"; };
+		D27513B306A6225300ADB3A4 /* Kernel.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Kernel.framework; path = /System/Library/Frameworks/Kernel.framework; sourceTree = "<absolute>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		32A4FEBF0562C75700D090E7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		089C166AFE841209C02AAC07 /* gre */ = {
+			isa = PBXGroup;
+			children = (
+				247142CAFF3F8F9811CA285C /* Source */,
+				089C167CFE841241C02AAC07 /* Resources */,
+				D27513B306A6225300ADB3A4 /* Kernel.framework */,
+				19C28FB6FE9D52B211CA2CBB /* Products */,
+			);
+			name = gre;
+			sourceTree = "<group>";
+		};
+		089C167CFE841241C02AAC07 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				32A4FEC30562C75700D090E7 /* Info.plist */,
+				089C167DFE841241C02AAC07 /* InfoPlist.strings */,
+				5927A9F612B5293900E4DED1 /* Welcome.rtf */,
+				5927A9F812B5294C00E4DED1 /* ReadMe.rtf */,
+				5927A9FA12B5295C00E4DED1 /* License.rtf */,
+				595C460012B66EA700A64934 /* postinstall.sh */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
+		19C28FB6FE9D52B211CA2CBB /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				32A4FEC40562C75800D090E7 /* GRE.kext */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		247142CAFF3F8F9811CA285C /* Source */ = {
+			isa = PBXGroup;
+			children = (
+				1A224C3CFF42312311CA2CB7 /* gre.c */,
+				59059266129E8B5900E567E9 /* gre_if.h */,
+				59059267129E8B5900E567E9 /* gre_if.c */,
+				591E748612A5429A0054922E /* gre_ipfilter.h */,
+				591E748712A5429A0054922E /* gre_ipfilter.c */,
+				59F8225612A008E1008B174C /* gre_debug.h */,
+			);
+			name = Source;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		32A4FEBA0562C75700D090E7 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				59059268129E8B5900E567E9 /* gre_if.h in Headers */,
+				59F8225712A008E1008B174C /* gre_debug.h in Headers */,
+				591E748812A5429A0054922E /* gre_ipfilter.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		32A4FEB80562C75700D090E7 /* GRE */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1DEB91C308733DAC0010E9CD /* Build configuration list for PBXNativeTarget "GRE" */;
+			buildPhases = (
+				32A4FEBA0562C75700D090E7 /* Headers */,
+				32A4FEBB0562C75700D090E7 /* Resources */,
+				32A4FEBD0562C75700D090E7 /* Sources */,
+				32A4FEBF0562C75700D090E7 /* Frameworks */,
+				32A4FEC00562C75700D090E7 /* Rez */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = GRE;
+			productInstallPath = "$(SYSTEM_LIBRARY_DIR)/Extensions";
+			productName = gre;
+			productReference = 32A4FEC40562C75800D090E7 /* GRE.kext */;
+			productType = "com.apple.product-type.kernel-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		089C1669FE841209C02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 1DEB91C708733DAC0010E9CD /* Build configuration list for PBXProject "gre" */;
+			compatibilityVersion = "Xcode 3.1";
+			hasScannedForEncodings = 1;
+			mainGroup = 089C166AFE841209C02AAC07 /* gre */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				32A4FEB80562C75700D090E7 /* GRE */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		32A4FEBB0562C75700D090E7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				32A4FEBC0562C75700D090E7 /* InfoPlist.strings in Resources */,
+				5927A9F712B5293900E4DED1 /* Welcome.rtf in Resources */,
+				5927A9F912B5294C00E4DED1 /* ReadMe.rtf in Resources */,
+				5927A9FB12B5295C00E4DED1 /* License.rtf in Resources */,
+				595C460112B66EA700A64934 /* postinstall.sh in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXRezBuildPhase section */
+		32A4FEC00562C75700D090E7 /* Rez */ = {
+			isa = PBXRezBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXRezBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		32A4FEBD0562C75700D090E7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				32A4FEBE0562C75700D090E7 /* gre.c in Sources */,
+				59059269129E8B5900E567E9 /* gre_if.c in Sources */,
+				591E748912A5429A0054922E /* gre_ipfilter.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		089C167DFE841241C02AAC07 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				089C167EFE841241C02AAC07 /* English */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		1DEB91C408733DAC0010E9CD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INFOPLIST_FILE = Info.plist;
+				INSTALL_PATH = "$(SYSTEM_LIBRARY_DIR)/Extensions";
+				MODULE_NAME = org.gmshake.nke.GRE;
+				MODULE_START = gre_start;
+				MODULE_STOP = gre_stop;
+				MODULE_VERSION = 1.0.0d1;
+				PRODUCT_NAME = GRE;
+				WRAPPER_EXTENSION = kext;
+			};
+			name = Debug;
+		};
+		1DEB91C508733DAC0010E9CD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				GCC_MODEL_TUNING = G5;
+				INFOPLIST_FILE = Info.plist;
+				INSTALL_PATH = "$(SYSTEM_LIBRARY_DIR)/Extensions";
+				MODULE_NAME = org.gmshake.nke.GRE;
+				MODULE_START = gre_start;
+				MODULE_STOP = gre_stop;
+				MODULE_VERSION = 1.0.0d1;
+				PRODUCT_NAME = GRE;
+				WRAPPER_EXTENSION = kext;
+			};
+			name = Release;
+		};
+		1DEB91C808733DAC0010E9CD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_CFLAGS = "-DDEBUG";
+				PREBINDING = NO;
+				PRODUCT_NAME = GRE;
+				SDKROOT = macosx10.5;
+			};
+			name = Debug;
+		};
+		1DEB91C908733DAC0010E9CD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_VERSION = com.apple.compilers.llvmgcc42;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				PREBINDING = NO;
+				PRODUCT_NAME = GRE;
+				SDKROOT = macosx10.5;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DEB91C308733DAC0010E9CD /* Build configuration list for PBXNativeTarget "GRE" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DEB91C408733DAC0010E9CD /* Debug */,
+				1DEB91C508733DAC0010E9CD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1DEB91C708733DAC0010E9CD /* Build configuration list for PBXProject "gre" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DEB91C808733DAC0010E9CD /* Debug */,
+				1DEB91C908733DAC0010E9CD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 089C1669FE841209C02AAC07 /* Project object */;
+}
