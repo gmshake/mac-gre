@@ -312,8 +312,9 @@ static errno_t gre_if_detach(ifnet_t ifp)
     
     struct gre_softc *sc = ifnet_softc(ifp);
     errno_t ret;
- 
-    ifnet_set_flags(ifp, 0, IFF_UP | IFF_RUNNING);
+    
+    if (ifnet_flags(ifp) & IFF_UP || ifnet_flags(ifp) & IFF_RUNNING)
+        ifnet_set_flags(ifp, 0, IFF_UP | IFF_RUNNING);
     
     if (sc->gre_psrc != NULL) {
         FREE((caddr_t)sc->gre_psrc, M_IFADDR);
@@ -772,7 +773,6 @@ static errno_t gre_if_ioctl(ifnet_t ifp, u_int32_t cmd, void *data)
         case SIOCSIFADDR: /* set ifnet address */
         case SIOCAIFADDR: /* add/chg IF alias */
         case SIOCALIFADDR: /* add IF addr */
-            ifnet_set_flags(ifp, IFF_UP, IFF_UP);
             if (ifnet_flags(ifp) & IFF_RUNNING)
                 gre_if_attach();
             break;
@@ -784,7 +784,6 @@ static errno_t gre_if_ioctl(ifnet_t ifp, u_int32_t cmd, void *data)
             switch (ifr->ifr_addr.sa_family) {
                 case AF_INET:
                 case AF_INET6:
-                    ifnet_set_flags(ifp, IFF_UP, IFF_UP);
                     if (ifnet_flags(ifp) & IFF_RUNNING)
                         gre_if_attach();
                     break;
@@ -798,7 +797,6 @@ static errno_t gre_if_ioctl(ifnet_t ifp, u_int32_t cmd, void *data)
             break;
         case SIOCDIFADDR: /* delete IF addr */
         case SIOCDLIFADDR: /* delete IF addr */
-            ifnet_set_flags(ifp, 0, IFF_UP);
             break;
         case SIOCDELMULTI:
             if (ifr == NULL) {
@@ -815,9 +813,6 @@ static errno_t gre_if_ioctl(ifnet_t ifp, u_int32_t cmd, void *data)
             }
             break;
         case SIOCSIFDSTADDR:  /* set p-p address */
-            ifnet_set_flags(ifp, IFF_UP, IFF_UP);
-            if (ifnet_flags(ifp) & IFF_RUNNING)
-                gre_if_attach();
             break;
         case SIOCGIFDSTADDR: /* get p-p address */
             break;
@@ -898,8 +893,7 @@ static errno_t gre_if_ioctl(ifnet_t ifp, u_int32_t cmd, void *data)
             sc->gre_pdst = sa;
             
             ifnet_set_flags(ifp, IFF_RUNNING, IFF_RUNNING);
-            if (ifnet_flags(ifp) & IFF_UP)
-                gre_if_attach();
+            gre_if_attach();
             
             gre_ipfilter_attach(); // attach ip filter
             break;
