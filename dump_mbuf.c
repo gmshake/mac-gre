@@ -63,6 +63,11 @@ void dump_ip(const struct ip *iph)
            iph->ip_v, iph->ip_hl, iph->ip_p, ntohs(iph->ip_len), ntohs(iph->ip_sum));
 }
 
+void print_ip_addr(in_addr_t in)
+{
+    in = ntohl(in);
+    printf("%d.%d.%d.%d", (in >> 24) & 0xff, (in >> 16) & 0xff, (in >> 8) & 0xff, in & 0xff);
+}
 
 int chk_mbuf(mbuf_t m)
 {

@@ -35,30 +35,22 @@ extern lck_rw_t *gre_domain_lck;
 extern TAILQ_HEAD(gre_softc_head, gre_softc) gre_softc_list;
 
 static lck_mtx_t *gre_ipf_mtx = NULL;
-ipfilter_t gre_ipfilter = NULL;
+ipfilter_t gre_ipv4filter = NULL;
 
 static errno_t ipv4_infilter(void *cookie, mbuf_t *m, int offset, u_int8_t protocol);
-static errno_t ipv4_outfilter(void* cookie, mbuf_t *m, ipf_pktopts_t options);
-static void ipv4_detach(void *cookie);
+//static errno_t ipv4_outfilter(void* cookie, mbuf_t *m, ipf_pktopts_t options);
+static void ipv4_if_detach(void *cookie);
 
 errno_t gre_ipfilter_init()
 {
-    dprintf("%s: attach ipfilter, \tseq: %llu\n", __FUNCTION__, get_seq());
-#ifdef DEBUG
-    if (gre_lck_grp == NULL) {
-        printf("%s: please allocate gre_lck_grp first!!!\n", __FUNCTION__);
-        return -1;
-    }
-#endif
-    
     if (gre_ipf_mtx != NULL)
         return 0;
+    dprintf("%s: attach ipfilter, \tseq: %llu\n", __FUNCTION__, get_seq());
 
     gre_ipf_mtx = lck_mtx_alloc_init(gre_lck_grp, NULL);
     
-    if (gre_ipf_mtx == NULL) {
+    if (gre_ipf_mtx == NULL)
         return -1;
-    }
 
     return 0;
 }
@@ -68,12 +60,6 @@ errno_t gre_ipfilter_dispose()
     dprintf("%s: dispose ipfilter, \tseq: %llu\n", __FUNCTION__, get_seq());
     
     if (gre_ipfilter_detach() == 0) {
-#ifdef DEBUG
-        if (gre_lck_grp == NULL) {
-            printf("%s: gre_lck_grp freed before gre_ifp_mtx is freed!!!\n", __FUNCTION__);
-            return 0; // cause mem leak???
-        }
-#endif
         if (gre_ipf_mtx != NULL) {
             lck_mtx_free(gre_ipf_mtx, gre_lck_grp);
             gre_ipf_mtx = NULL;
@@ -87,19 +73,19 @@ errno_t gre_ipfilter_dispose()
 errno_t gre_ipfilter_attach()
 {
     dprintf("%s: attach ipfilter, \tseq: %llu\n", __FUNCTION__, get_seq());
-    if (gre_ipfilter)
+    if (gre_ipv4filter)
         return EEXIST;
     
     errno_t err = 0;
     struct ipf_filter ipf;
     bzero(&ipf, sizeof(struct ipf_filter));
     
-    ipf.cookie = (caddr_t)&gre_ipfilter;
+    ipf.cookie = (caddr_t)&gre_ipv4filter;
 	ipf.name = "org.gmshake.nke.GRE";
 	ipf.ipf_input = ipv4_infilter;
-	ipf.ipf_detach = ipv4_detach;
+	ipf.ipf_detach = ipv4_if_detach;
 
-	err = ipf_addv4(&ipf, &gre_ipfilter);
+	err = ipf_addv4(&ipf, &gre_ipv4filter);
     if (err)
         printf("%s: ipf_addv4(), err=0x%x\n", __FUNCTION__, err);
 
@@ -108,22 +94,22 @@ errno_t gre_ipfilter_attach()
 
 errno_t gre_ipfilter_detach()
 {
-    dprintf("%s: detach ipfilter, \tseq: %llu\n", __FUNCTION__, get_seq());
-    if (gre_ipfilter == NULL)
+    if (gre_ipv4filter == NULL)
         return 0;
+    dprintf("%s: detach ipfilter, \tseq: %llu\n", __FUNCTION__, get_seq());
     
     errno_t err = 0;
     
     lck_mtx_lock(gre_ipf_mtx);
-    if (gre_ipfilter) {
+    if (gre_ipv4filter) {
         lck_mtx_unlock(gre_ipf_mtx);
 
-        err = ipf_remove(gre_ipfilter);
+        err = ipf_remove(gre_ipv4filter);
         if (err == 0) {
             lck_mtx_lock(gre_ipf_mtx);
-            if (gre_ipfilter) {
+            if (gre_ipv4filter) {
                 /* wait for the detach */
-                msleep(&gre_ipfilter, gre_ipf_mtx, PDROP, NULL, NULL);
+                msleep(&gre_ipv4filter, gre_ipf_mtx, PDROP, NULL, NULL);
             } else 
                 lck_mtx_unlock(gre_ipf_mtx);
         }
@@ -166,17 +152,19 @@ static errno_t ipv4_infilter(void *cookie, mbuf_t *m, int offset, u_int8_t proto
             gh = mbuf_data(*m);
 
             /* the data in ip header in mbuf that is passed into ip filters always use network byte order */
-            switch (ntohs(gh->gi_ptype)) {
-                case WCCP_PROTOCOL_TYPE:
+            switch (gh->gi_ptype) {
+                case htons(WCCP_PROTOCOL_TYPE):
                     extra += sizeof(uint32_t);
                     break;
-                case ETHERTYPE_IP:
+                case htons(ETHERTYPE_IP):
                     break;
-                case ETHERTYPE_IPV6:
+                case htons(ETHERTYPE_IPV6):
                 default:
                     dprintf("Proto type %d is not supported yet.\n", ntohs(gh->gi_ptype));
                     goto done;
             }
+            
+            dprintf("offset:%d\n", offset);
             
             /* key present */
             if (gh->gi_flags & htons(GRE_KP))
@@ -206,7 +194,7 @@ static errno_t ipv4_infilter(void *cookie, mbuf_t *m, int offset, u_int8_t proto
                     }
                     
                     if ((err = mbuf_setdata(*m, \
-                                     mbuf_data(*m) + sizeof(struct greip) + extra, \
+                                            mbuf_data(*m) + sizeof(struct greip) + extra, \
                                             mbuf_len(*m) - sizeof(struct greip) - extra)) != 0) {
                         dprintf("---->mbuf_setdata() error=0x%x\n", err);
                         break;
@@ -246,21 +234,25 @@ static errno_t ipv4_infilter(void *cookie, mbuf_t *m, int offset, u_int8_t proto
             dprintf("%s: IPPROTO_MOBILE is under deployment!!!\n", __FUNCTION__);
             break;
         default:
-            dprintf("%s: IPPROTO_MOBILE is under deployment!!!\n", __FUNCTION__);
             break;
     }
+    
 done:
     return err;
 }
 
-static void ipv4_detach(void *cookie)
+
+/*
+ * is called to notify the filter that it has been detached.
+ */
+static void ipv4_if_detach(void *cookie)
 {
     dprintf("%s: \tseq: %llu\n", __FUNCTION__, get_seq());
     lck_mtx_lock(gre_ipf_mtx);
-    if (gre_ipfilter) {
-        gre_ipfilter = NULL;
+    if (gre_ipv4filter) {
+        gre_ipv4filter = NULL;
         lck_mtx_unlock(gre_ipf_mtx);
-        wakeup(&gre_ipfilter);
+        wakeup(&gre_ipv4filter);
     } else
         lck_mtx_unlock(gre_ipf_mtx);
 }

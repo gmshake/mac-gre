@@ -13,9 +13,9 @@
 #include "gre_seq.h"
 #endif
 
-extern int gre_if_init();
-extern int gre_if_dispose();
-extern int gre_if_attach();
+extern int gre_init();
+extern int gre_dispose();
+extern int gre_attach();
 extern errno_t gre_attach_proto_family(ifnet_t ifp, protocol_family_t protocol);
 extern void gre_detach_proto_family(ifnet_t ifp, protocol_family_t protocol);
 
@@ -25,79 +25,66 @@ lck_grp_t *gre_lck_grp = NULL;
 
 kern_return_t gre_start (kmod_info_t * ki, void * data) {
     int err;
-    if (gre_inited) return KERN_SUCCESS;
+    
+    if (gre_inited)
+        return KERN_SUCCESS;
     
     // globle lock group
     gre_lck_grp = lck_grp_alloc_init("GRE locks", LCK_GRP_ATTR_NULL);
 
     if (gre_lck_grp == NULL) {
         /* if something fails, the lock won't work */
-        dprintf("%s: lck_grp_alloc_init failed\n", __FUNCTION__);
+        printf("%s: lck_grp_alloc_init failed\n", __FUNCTION__);
         return KERN_FAILURE;
     }
-    
-#ifdef DEBUG
-    if (seq_init() != 0)
-        goto end;
-#endif
 
     if (gre_ipfilter_init() != 0)
         goto end;
-    
-    if (gre_if_init() != 0) {
+    if (gre_init() != 0)
 		goto end;
-	}
-    
-    
+
     /* register INET and INET6 protocol families */
     err = proto_register_plumber(AF_INET, APPLE_IF_FAM_TUN, gre_attach_proto_family, gre_detach_proto_family);
-    if (err) {
+    if (err)
         printf("gre: could not register AF_INET protocol family: %d\n", err);
-    }
 
     err = proto_register_plumber(AF_INET6, APPLE_IF_FAM_TUN, gre_attach_proto_family, gre_detach_proto_family);
-    if (err) {
+    if (err)
         printf("gre: could not register AF_INET6 protocol family: %d\n", err);
-    }
+    
     // attach the first interface
-    gre_if_attach();
+    gre_attach();
     gre_inited = 1;
     return KERN_SUCCESS;
-end:
     
+end:
     gre_ipfilter_dispose();
-#ifdef DEBUG
-    seq_dispose();
-#endif
-    if (gre_lck_grp) {
+
+    if (gre_lck_grp)
         lck_grp_free(gre_lck_grp);
-        gre_lck_grp = NULL;
-    }
+
     return KERN_FAILURE;
 }
 
 
 kern_return_t gre_stop (kmod_info_t * ki, void * data) {
     int err;
-    if (!gre_inited) return KERN_SUCCESS;
+    
+    if (!gre_inited)
+        return KERN_SUCCESS;
     
     proto_unregister_plumber(AF_INET6, APPLE_IF_FAM_TUN);
     proto_unregister_plumber(AF_INET, APPLE_IF_FAM_TUN);
     
-    err = gre_if_dispose();
+    err = gre_dispose();
     if (err) {
-        dprintf("gre_stop: gre_if_dispose error = 0x%x\n", err);
+        dprintf("%s: gre_dispose error = 0x%x\n", __FUNCTION__, err);
         return KERN_FAILURE;
     }
     
     gre_ipfilter_dispose();
     
-#ifdef DEBUG
-    seq_dispose();
-#endif
-    
     lck_grp_free(gre_lck_grp);
-    gre_lck_grp = NULL;
 
     gre_inited = 0;
     return KERN_SUCCESS;

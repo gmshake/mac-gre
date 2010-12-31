@@ -9,8 +9,6 @@
 #ifndef _GRE_SEQ_H_
 #define _GRE_SEQ_H_
 
-extern errno_t seq_init();
-extern errno_t seq_dispose();
 extern u_int64_t get_seq();
 
 #endif //_GRE_SEQ_H_

@@ -40,7 +40,10 @@
 #ifndef _NET_IF_GRE_H
 #define _NET_IF_GRE_H
 
+
 /*
+ * should include these
+ *
 #include <sys/appleapiopts.h>
 #include <net/kpi_interface.h>
 #include <netinet/in.h>
@@ -59,11 +62,10 @@ typedef enum {
 } wccp_ver_t;
 
 struct gre_softc {
+    TAILQ_ENTRY(gre_softc)  sc_list;
 	ifnet_t         sc_ifp;
     lck_mtx_t       *mtx;		/* interface mutex */
-    int             gre_unit;
-//    struct ifqueue  if_snd;
-    
+    //int             gre_unit;
     //int gre_flags;
     //u_int	gre_fibnum;	/* use this fib for envelopes */
 	//struct in_addr g_src;	/* source address of gre packets */
@@ -76,27 +78,24 @@ struct gre_softc {
 #define AF_INET_PRESENT 0x01
 #define AF_INET6_PRESENT 0x02
     
-//	route_t     route;	/* routing entry that determines, where a encapsulated packet should go */
-    u_int8_t    is_detaching;		/* state of the interface */
-	u_int8_t    encap_proto;		/* protocol of encapsulator */
+	u_int8_t    encap_proto;		/* protocol of encapsulator, IPPROTO_GRE, IPPROTO_MOBILE ... */
+    u_int16_t   is_detaching;		/* state of the interface */
     
 	//const struct encaptab *encap;	/* encapsulation cookie */
 
-	int         called;		/* infinite recursion preventer */
+	uint32_t    called;		/* infinite recursion preventer */
 	uint32_t    key;		/* key included in outgoing GRE packets */  /* zero means none */
 	wccp_ver_t  wccp_ver;	/* version of the WCCP */
     
-    TAILQ_ENTRY(gre_softc)  sc_list;
-    bpf_packet_func         bpf_input;
-    bpf_packet_func         bpf_output;
-//    ifnet_t                 sc_ifp_out;
+    bpf_packet_func bpf_input;
+    bpf_packet_func bpf_output;
+
 };
 //#define	GRE2IFP(sc)	((sc)->sc_ifp)
 
 struct gre_h {
 	u_int16_t flags;	/* GRE flags */
-	u_int16_t ptype;	/* protocol type of payload typically
-     Ether protocol type*/
+	u_int16_t ptype;	/* protocol type of payload, typically Ether protocol type */
 	uint32_t options[0];	/* optional options */
     /*
      *  from here on: fields are optional, presence indicated by flags
@@ -155,11 +154,10 @@ struct greip {
  * should be routed over more than one tunnel hop by hop
  */
 struct gre_sre {
-	u_int16_t sre_family;	/* address family */
-	u_char	sre_offset;	/* offset to first octet of active entry */
-	u_char	sre_length;	/* number of octets in the SRE.
-     sre_lengthl==0 -> last entry. */
-	u_char	*sre_rtinfo;	/* the routing information */
+	u_int16_t sre_family;   /* address family */
+	u_char	sre_offset;     /* offset to first octet of active entry */
+	u_char	sre_length;     /* number of octets in the SRE. sre_lengthl==0 -> last entry. */
+	u_char	*sre_rtinfo;    /* the routing information */
 };
 
 struct greioctl {
