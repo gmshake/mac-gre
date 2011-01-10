@@ -10,6 +10,7 @@
 #ifndef _GRE_DEBUG_H
 #define _GRE_DEBUG_H
 
+struct ip;
 
 /*
  * Output queues (ifp->if_snd) and slow device input queues (*ifp->if_slowq)

@@ -69,20 +69,3 @@ void print_ip_addr(in_addr_t in)
     printf("%d.%d.%d.%d", (in >> 24) & 0xff, (in >> 16) & 0xff, (in >> 8) & 0xff, in & 0xff);
 }
 
-int chk_mbuf(mbuf_t m)
-{
-    if (! (mbuf_flags(m) &  MBUF_PKTHDR)) {
-        printf("%s: Warning: It is NOT a mbuf pkt header !!!\n", __FUNCTION__);
-        return -1;
-    }
-    size_t len = mbuf_pkthdr_len(m);
-    while (len > mbuf_len(m)) {
-		if (mbuf_next(m) == NULL) {
-            printf("%s: invalid mbuf chain\n", __FUNCTION__);
-            return -1;
-        }
-		len -= mbuf_len(m);
-		m = mbuf_next(m);
-	}
-    return 0;
-}

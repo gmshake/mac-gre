@@ -12,9 +12,11 @@
 
 #include <net/if.h>
 #include <net/ethernet.h>
+#include <netat/appletalk.h>
 
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <netinet/ip6.h>
 #include <netinet/kpi_ipfilter.h>
 
 #if CONFIG_MACF_NET
@@ -23,12 +25,8 @@
 
 #include "gre_if.h"
 #include "gre_ipfilter.h"
-
+#include "gre_pcb.h"
 #include "gre_debug.h"
-#ifdef DEBUG
-#include "gre_seq.h"
-#include "dump_mbuf.h"
-#endif
 
 extern lck_grp_t *gre_lck_grp;
 extern lck_rw_t *gre_domain_lck;
@@ -37,45 +35,60 @@ extern TAILQ_HEAD(gre_softc_head, gre_softc) gre_softc_list;
 static lck_mtx_t *gre_ipf_mtx = NULL;
 ipfilter_t gre_ipv4filter = NULL;
 
+//static struct gre_softc * gre_lookup(mbuf_t m, u_int8_t protocol);
 static errno_t ipv4_infilter(void *cookie, mbuf_t *m, int offset, u_int8_t protocol);
-//static errno_t ipv4_outfilter(void* cookie, mbuf_t *m, ipf_pktopts_t options);
 static void ipv4_if_detach(void *cookie);
 
+/*
+ * gre_ipfilter_init(), initialize resources required by ip filter
+ */
 errno_t gre_ipfilter_init()
 {
-    if (gre_ipf_mtx != NULL)
+#ifdef DEBUG
+    if (gre_ipf_mtx != NULL) {
+        printf("%s: gre_ifp_mtx already inited\n", __FUNCTION__);
         return 0;
-    dprintf("%s: attach ipfilter, \tseq: %llu\n", __FUNCTION__, get_seq());
-
+    }
+#endif
     gre_ipf_mtx = lck_mtx_alloc_init(gre_lck_grp, NULL);
     
     if (gre_ipf_mtx == NULL)
         return -1;
-
-    return 0;
+    else
+        return 0;
 }
 
+/*
+ * gre_ipfilter_dispose(), the opposite to gre_ipfilter_init(), ie clean up
+ */
 errno_t gre_ipfilter_dispose()
 {
-    dprintf("%s: dispose ipfilter, \tseq: %llu\n", __FUNCTION__, get_seq());
-    
     if (gre_ipfilter_detach() == 0) {
         if (gre_ipf_mtx != NULL) {
             lck_mtx_free(gre_ipf_mtx, gre_lck_grp);
             gre_ipf_mtx = NULL;
         }
+#ifdef DEBUG
+        printf("%s: done\n", __FUNCTION__);
+#endif
         return 0;
     }
-    dprintf("%s: error dispose ipfilter\n", __FUNCTION__);
+#ifdef DEBUG
+    printf("%s: error dispose ipfilter\n", __FUNCTION__);
+#endif
     return -1;
 }
 
+/*
+ * gre_ipfilter_attach(), attach ipv4 filter
+ */
 errno_t gre_ipfilter_attach()
 {
-    dprintf("%s: attach ipfilter, \tseq: %llu\n", __FUNCTION__, get_seq());
     if (gre_ipv4filter)
         return EEXIST;
-    
+#ifdef DEBUG
+    printf("%s\n", __FUNCTION__);
+#endif
     errno_t err = 0;
     struct ipf_filter ipf;
     bzero(&ipf, sizeof(struct ipf_filter));
@@ -92,12 +105,16 @@ errno_t gre_ipfilter_attach()
     return err;
 }
 
+/*
+ * gre_ipfilter_detach(), detach ipv4 filter
+ */
 errno_t gre_ipfilter_detach()
 {
     if (gre_ipv4filter == NULL)
         return 0;
-    dprintf("%s: detach ipfilter, \tseq: %llu\n", __FUNCTION__, get_seq());
-    
+#ifdef DEBUG
+    printf("%s\n", __FUNCTION__);
+#endif
     errno_t err = 0;
     
     lck_mtx_lock(gre_ipf_mtx);
@@ -108,146 +125,192 @@ errno_t gre_ipfilter_detach()
         if (err == 0) {
             lck_mtx_lock(gre_ipf_mtx);
             if (gre_ipv4filter) {
-                /* wait for the detach */
+                /* wait for the detach process */
                 msleep(&gre_ipv4filter, gre_ipf_mtx, PDROP, NULL, NULL);
-            } else 
+            } else {
                 lck_mtx_unlock(gre_ipf_mtx);
+            }
         }
-    } else
+    } else {
         lck_mtx_unlock(gre_ipf_mtx);
+    }
     
     return err;
 }
 
+/* use gre_hash_find() instead */
+/*
+ * gre_lookup(), on success, return pointer point to matching gre_softc, otherwise return NULL
+ * @param m         in, mbuf_t with ip header
+ * @param protocol  in, which protocol, IPPROTO_GRE/IPPROTO_MOBILE
+ */
+/*
+static struct gre_softc * gre_lookup(mbuf_t m, u_int8_t protocol)
+{
+	struct ip *ip = mbuf_data(m);
+	struct gre_softc *sc;
+    
+    TAILQ_FOREACH(sc, &gre_softc_list, sc_list) {
+        if (ifnet_flags(sc->sc_ifp) & (IFF_UP | IFF_RUNNING) == (IFF_UP | IFF_RUNNING) && \
+            sc->encap_proto == protocol && \
+            sc->gre_pdst.sa_family != AF_UNSPEC && \
+            sc->gre_psrc.sa_family != AF_UNSPEC && \
+            in_hosteq(ip->ip_dst, ((struct sockaddr_in *)&sc->gre_psrc)->sin_addr) && \
+            in_hosteq(ip->ip_src, ((struct sockaddr_in *)&sc->gre_pdst)->sin_addr)) {
+            return sc;
+        }
+    }
+    
+	return NULL;
+}
+*/
+
 /* the caller who call this function(ipv4_infilter) will free the mbuf when 
- * error returns except EJUSTRETURN
- * so, remember to check the function called in this function if it frees
- * the mbuf chain when error occurs. That is, do remember return EJUSTRETURN
- * if you frees the mbuf or the called function frees the mbuf. Otherwise, 
- * DOUBLE FREE will cause system panic...
+ * it returns any error except EJUSTRETURN.
+ * so, remember to check the function called by this function if it frees
+ * the mbuf chain on error. That is, do remember return EJUSTRETURN
+ * if you frees the mbuf or the function called by this function frees the mbuf.
+ * Otherwise, DOUBLE FREE, causing kernel panic...
  *
  * return ZERO if this filter is not interested in the packet
  * otherwise, it means this filter deal with the packet, and other filters will
  * not see this packet
+ *
+ * @param cookie
+ * @param m
+ * @param offset    ip header offset
+ * @param protocol  proto, IPPROTO_GRE/IPPROTO_MOBILE
  */
 static errno_t ipv4_infilter(void *cookie, mbuf_t *m, int offset, u_int8_t protocol)
 {
-    errno_t             err = 0;
+    ifnet_t             ifp;
     size_t              extra = 0;
-    struct greip        *gh = NULL;
-    struct gre_softc    *sc = NULL;
+    size_t              iph_len;
+    uint32_t            key = 0;
+    struct greip        *gh;
+    struct gre_softc    *sc;
 
     switch (protocol) {
         case IPPROTO_GRE:
-            if (mbuf_pkthdr_len(*m) < sizeof(struct greip) + sizeof(struct ip))
-                break; /* maybe it is a PPTP packet, just ignore it */
+            if (mbuf_pkthdr_len(*m) < sizeof(struct greip))
+                return 0; /* too small, just ignore it */
             
             /* make data in first packet continuers */
-            mbuf_pullup(m, sizeof(struct greip) + sizeof(struct ip));
-            if (*m == NULL) {
-                err = EJUSTRETURN; // mbuf_pullup() has freed the buff, so, return EJUSTRETURN to avoid DOUBLE FREE!!!
-                break;  // mbuf_pullup() should never fail since mbuf_len(*m) is long enough, Ah... no MEMERY???
-            }
+            mbuf_pullup(m, sizeof(struct greip));
+            if (*m == NULL)
+                return EJUSTRETURN; // mbuf_pullup() has freed the buff, so, return EJUSTRETURN to avoid DOUBLE FREE!!!
             
             gh = mbuf_data(*m);
-
-            /* the data in ip header in mbuf that is passed into ip filters always use network byte order */
+            /* chksum bit is set */
+            if (gh->gi_flags & htons(GRE_CP)) {
+#ifdef DEBUG
+                printf("\tJust ignore checksum...\n");
+#endif
+                extra += sizeof(uint32_t);
+            }
+            /* We don't support routing fields (variable length) */
+            if (gh->gi_flags & GRE_RP)
+                return 0;
+            /* key present */
+            if (gh->gi_ptype & htons(GRE_KP)) {
+                extra += sizeof(uint32_t);
+                mbuf_pullup(m, sizeof(struct greip) + extra);
+                if (*m == NULL)
+                    return EJUSTRETURN;
+                gh = mbuf_data(*m); /* mbuf_pullup may change *m */
+                key = ntohl(gh->gi_options[extra / sizeof(uint32_t)]);
+            }
+            /* Sequence Present */
+            if (gh->gi_ptype & htons(GRE_SP))
+                extra += sizeof(uint32_t);
+            
             switch (gh->gi_ptype) {
                 case htons(WCCP_PROTOCOL_TYPE):
                     extra += sizeof(uint32_t);
+                    iph_len = sizeof(struct ip);
                     break;
                 case htons(ETHERTYPE_IP):
+                    iph_len = sizeof(struct ip);
                     break;
                 case htons(ETHERTYPE_IPV6):
+                    iph_len = sizeof(struct ip6_hdr);
+                    break;
+                case htons(ETHERTYPE_AT):
+                    iph_len = sizeof(uint16_t);
+                    break;
                 default:
-                    dprintf("Proto type %d is not supported yet.\n", ntohs(gh->gi_ptype));
-                    goto done;
+#ifdef DEBUG
+                    printf("Proto type %d is not supported yet.\n", ntohs(gh->gi_ptype));
+#endif
+                    return 0;
             }
             
-            dprintf("offset:%d\n", offset);
+            mbuf_pullup(m, sizeof(struct greip) + extra + iph_len);
+            if (*m == NULL)
+                return EJUSTRETURN; /* maybe it is not a valid ip packet */
             
-            /* key present */
-            if (gh->gi_flags & htons(GRE_KP))
-                extra += sizeof(uint32_t);
-            
-            /* check if chksum bit is set */
-            if (gh->gi_flags & htons(GRE_CP))
-                dprintf("\tJust ignore checksum...\n");
-
+            gh = mbuf_data(*m);
+            /* find a matching interface */
             lck_rw_lock_shared(gre_domain_lck);
-            TAILQ_FOREACH(sc, &gre_softc_list, sc_list) {
-                if (sc->sc_ifp && \
-                    ifnet_flags(sc->sc_ifp) & (IFF_UP | IFF_RUNNING) == (IFF_UP | IFF_RUNNING) && \
-                    sc->gre_pdst && \
-                    sc->gre_psrc && \
-                    in_hosteq(gh->gi_dst, ((struct sockaddr_in *)sc->gre_psrc)->sin_addr) && \
-                    in_hosteq(gh->gi_src, ((struct sockaddr_in *)sc->gre_pdst)->sin_addr)) {
-
-                    dprintf("---->find interface gre%d\n", ifnet_unit(sc->sc_ifp));
-                    
-                    if (extra > 0) {
-                        mbuf_pullup(m, sizeof(struct greip) + extra + sizeof(struct ip));
-                        if (*m == NULL) {
-                            err = EJUSTRETURN; // since we have freed the mbuf, return EJUSTRETURN to avoid DOUBLE FREE
-                            break;
-                        }
-                    }
-                    
-                    if ((err = mbuf_setdata(*m, \
-                                            mbuf_data(*m) + sizeof(struct greip) + extra, \
-                                            mbuf_len(*m) - sizeof(struct greip) - extra)) != 0) {
-                        dprintf("---->mbuf_setdata() error=0x%x\n", err);
-                        break;
-                    }
-                    mbuf_pkthdr_adjustlen(*m, - (sizeof(struct greip) + extra));
-
-                    if ((err = mbuf_pkthdr_setrcvif(*m, sc->sc_ifp)) != 0) {
-                        dprintf("---->error set rcvif: %d\n", err); //sould never happen since this version(xnu1228) \
-                                                                        of mbuf_pkthdr_setrcvif() do not check the interface, \
-                                                                        maybe the next version will do, there is no gurantee
-                        break;
-                    }
-#ifdef DEBUG
-                    if (chk_mbuf(*m) != 0) { // we check the mbuf by ourselves first, preventing the anoying kernel panic...
-                        printf("---->warning: invalid mbuf: %p\n", *m);
-                        err = EINVAL;
-                        break;
-                    }
-#endif
-                     
-                     /* ifnet_input() always frees the mbuf chain */
-                    if ((err = ifnet_input(sc->sc_ifp, *m, NULL)) != 0)
-                        dprintf("---->ifnet_input() error=0x%x\n", err);
-
-                     /* since we see the packet and send it to GRE interfaces, \
-                      * then ifnet_input() will free the mbuf, \
-                      * so, tell the caller not to do any further stuff, otherwise, kernel panic
-                      * if you want to take other action on the mbuf, dump it before ifnet_input()
-                      */
-                    err = EJUSTRETURN;
-                    break;
-                } /* else continue to check if next interface is satisfied */
+            sc = gre_hash_find(gh->gi_dst, gh->gi_src, key, protocol);
+            if (sc == NULL) {
+                lck_rw_unlock_shared(gre_domain_lck);
+                return 0;
+            }
+            ifp = sc->sc_ifp;
+            if (ifnet_reference(ifp)) {
+                lck_rw_unlock_shared(gre_domain_lck);
+                return 0;
             }
             lck_rw_unlock_shared(gre_domain_lck);
-            break;
+#ifdef DEBUG
+            printf("---->interface %s%d found\n", ifnet_name(ifp), ifnet_unit(ifp));
+#endif
+            mbuf_pkthdr_setheader(*m, mbuf_data(*m) + sizeof(struct ip));
+            /* set data point to payload packet */
+            if (mbuf_setdata(*m, \
+                             mbuf_data(*m) + sizeof(struct greip) + extra, \
+                             mbuf_len(*m) - sizeof(struct greip) - extra)) {
+#ifdef DEBUG
+                printf("---->invalid mbuf\n");
+#endif
+                return EINVAL;
+            }
+            mbuf_pkthdr_adjustlen(*m, - sizeof(struct greip) - extra);
+            mbuf_pkthdr_setrcvif(*m, ifp);
+            
+             /* ifnet_input() always frees the mbuf chain */
+            if (ifnet_input(ifp, *m, NULL)) {
+#ifdef DEBUG
+                printf("---->ifnet_input() error\n");
+#endif
+            }
+            
+            ifnet_release(ifp);
+            
+             /* since we see the packet and send it to GRE interfaces, \
+              * then ifnet_input() will free the mbuf, \
+              * so, tell the caller not to do any further stuff, otherwise, kernel panic
+              * if you want to take other action on the mbuf, dump it before ifnet_input()
+              */
+            return EJUSTRETURN;
         case IPPROTO_MOBILE:
-            dprintf("%s: IPPROTO_MOBILE is under deployment!!!\n", __FUNCTION__);
-            break;
+#ifdef DEBUG
+            printf("%s: IPPROTO_MOBILE is under deployment!!!\n", __FUNCTION__);
+#endif
+            return 0;
         default:
-            break;
+            return 0;
     }
     
-done:
-    return err;
+    return 0;
 }
-
 
 /*
  * is called to notify the filter that it has been detached.
  */
 static void ipv4_if_detach(void *cookie)
 {
-    dprintf("%s: \tseq: %llu\n", __FUNCTION__, get_seq());
     lck_mtx_lock(gre_ipf_mtx);
     if (gre_ipv4filter) {
         gre_ipv4filter = NULL;
@@ -256,4 +319,3 @@ static void ipv4_if_detach(void *cookie)
     } else
         lck_mtx_unlock(gre_ipf_mtx);
 }
-

@@ -48,6 +48,7 @@
 #include <net/kpi_interface.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <netinet/ip6.h>
 #include <sys/queue.h>
 */
  
@@ -63,26 +64,20 @@ typedef enum {
 
 struct gre_softc {
     TAILQ_ENTRY(gre_softc)  sc_list;
+    struct gre_softc        *pcb_next;
 	ifnet_t         sc_ifp;
     lck_mtx_t       *mtx;		/* interface mutex */
-    //int             gre_unit;
-    //int gre_flags;
-    //u_int	gre_fibnum;	/* use this fib for envelopes */
-	//struct in_addr g_src;	/* source address of gre packets */
-	//struct in_addr g_dst;	/* destination address of gre packets */
+
+    struct sockaddr gre_psrc; /* Physical src addr */
+	struct sockaddr gre_pdst; /* Physical dst addr */
     
-    struct sockaddr *gre_psrc; /* Physical src addr */
-	struct sockaddr *gre_pdst; /* Physical dst addr */
-    
-    u_int8_t    proto_flag;
-#define AF_INET_PRESENT 0x01
-#define AF_INET6_PRESENT 0x02
-    
+    u_int8_t    proto_flag; /* gre local address protocols */
+#define AF_INET_PRESENT         0x01
+#define AF_INET6_PRESENT        0x02
+#define AF_APPLETALK_PRESENT    0x04
 	u_int8_t    encap_proto;		/* protocol of encapsulator, IPPROTO_GRE, IPPROTO_MOBILE ... */
     u_int16_t   is_detaching;		/* state of the interface */
     
-	//const struct encaptab *encap;	/* encapsulation cookie */
-
 	uint32_t    called;		/* infinite recursion preventer */
 	uint32_t    key;		/* key included in outgoing GRE packets */  /* zero means none */
 	wccp_ver_t  wccp_ver;	/* version of the WCCP */
@@ -91,7 +86,6 @@ struct gre_softc {
     bpf_packet_func bpf_output;
 
 };
-//#define	GRE2IFP(sc)	((sc)->sc_ifp)
 
 struct gre_h {
 	u_int16_t flags;	/* GRE flags */
@@ -116,12 +110,19 @@ struct gre_h {
      struct gre_sre[] routing Routing fileds (see below)
      Present if (rt_pres == 1)
      */
-};// __packed;
+}__attribute__((__packed__));
 
 struct greip {
 	struct ip       gi_i;
 	struct gre_h    gi_g;
-};// __packed;
+}__attribute__((__packed__));
+
+#ifdef DEPLOY
+struct greip6 {
+	struct ip6_hdr  gi_i;
+	struct gre_h    gi_g;
+}__attribute__((__packed__));
+#endif
 
 #define gi_ver      gi_i.ip_v
 #define gi_hlen     gi_i.ip_hl
@@ -172,12 +173,12 @@ struct mobile_h {
 	u_int16_t hcrc;			/* header checksum */
 	u_int32_t odst;			/* original destination address */
 	u_int32_t osrc;			/* original source addr, if S-bit set */
-};// __packed;
+}__attribute__((__packed__));
 
 struct mobip_h {
 	struct ip	mi;
 	struct mobile_h	mh;
-};// __packed;
+}__attribute__((__packed__));
 
 
 #define MOB_H_SIZ_S		(sizeof(struct mobile_h) - sizeof(u_int32_t))
@@ -185,6 +186,7 @@ struct mobip_h {
 #define MOB_H_SBIT	0x0080
 
 #define	GRE_TTL	30
+#define GRE_MAXUNIT	0x7fff	/* ifp->if_unit is only 15 bits(short int) */
 
 #ifndef IPPROTO_MOBILE
 #define IPPROTO_MOBILE          55              /* IP Mobility */
@@ -220,5 +222,3 @@ struct mobip_h {
 #endif
 
 #endif
-
-

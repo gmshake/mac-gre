@@ -9,6 +9,7 @@
 
 #include <sys/kernel.h>
 
+#include <libkern/OSBase.h>
 #include <libkern/OSTypes.h>
 #include <libkern/OSAtomic.h>
 
