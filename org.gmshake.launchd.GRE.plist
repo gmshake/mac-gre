@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>Disabled</key>
-	<true/>
+	<false/>
 	<key>Label</key>
 	<string>org.gmshake.launched.GRE</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/sbin/kextload</string>
-		<string>/System/Library/Extensions/GRE.kext</string>
+		<string>/Library/Extensions/GRE.kext</string>
 	</array>
 	<key>RunAtLoad</key>
 	<true/>

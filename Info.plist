@@ -28,6 +28,8 @@
 		<string>8.0.0b1</string>
 		<key>com.apple.kpi.mach</key>
 		<string>8.0.0b1</string>
+		<key>com.apple.kpi.unsupported</key>
+		<string>8.0.0b1</string>
 	</dict>
 </dict>
 </plist>
