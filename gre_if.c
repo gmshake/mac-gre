@@ -73,10 +73,7 @@
 #endif
 
 #include "gre_if.h"
-//#include "gre_ipfilter.h"
 #include "gre_hash.h"
-#include "gre_debug.h"
-
 
 /*
  * It is not easy to calculate the right value for a GRE MTU.
@@ -392,7 +389,9 @@ done:
 /* attach inet/inet6 to a GRE interface through DLIL */
 errno_t gre_attach_proto_family(ifnet_t ifp, protocol_family_t protocol_family)
 {
-    dprintf("%s: fam=0x%x\n", __FUNCTION__, protocol_family);
+#ifdef DEBUG
+    printf("%s: fam=0x%x\n", __FUNCTION__, protocol_family);
+#endif
     struct ifnet_attach_proto_param	proto;
     errno_t err;
     
@@ -411,7 +410,9 @@ errno_t gre_attach_proto_family(ifnet_t ifp, protocol_family_t protocol_family)
 
 void gre_detach_proto_family(ifnet_t ifp, protocol_family_t protocol)
 {
-    dprintf("%s: fam=0x%x\n", __FUNCTION__, protocol);
+#ifdef DEBUG
+    printf("%s: fam=0x%x\n", __FUNCTION__, protocol);
+#endif
     errno_t err;
         
     struct gre_softc *sc = ifnet_softc(ifp);
@@ -429,7 +430,9 @@ void gre_detach_proto_family(ifnet_t ifp, protocol_family_t protocol)
                 return;
             break;
         default:
-            dprintf("%s: unkown proto family 0x%x\n", __FUNCTION__, protocol); // should never happen
+#ifdef DEBUG
+            printf("%s: unkown proto family 0x%x\n", __FUNCTION__, protocol); // should never happen
+#endif
             return;
     }
     
@@ -447,8 +450,9 @@ static errno_t
 gre_add_proto(ifnet_t ifp, protocol_family_t protocol, const struct ifnet_demux_desc *demux_array,
               u_int32_t demux_count)
 {
-    dprintf("%s: add proto 0x%x for %s%d\n", __FUNCTION__, protocol, ifnet_name(ifp), ifnet_unit(ifp));
-    
+#ifdef DEBUG
+    printf("%s: add proto 0x%x for %s%d\n", __FUNCTION__, protocol, ifnet_name(ifp), ifnet_unit(ifp));
+#endif    
     struct gre_softc *sc = ifnet_softc(ifp);
     switch (protocol) {
         case AF_INET:
@@ -479,7 +483,9 @@ gre_add_proto(ifnet_t ifp, protocol_family_t protocol, const struct ifnet_demux_
 static errno_t
 gre_del_proto(ifnet_t ifp, protocol_family_t protocol)
 {
-    dprintf("%s: del proto for %s%d\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp));
+#ifdef DEBUG
+    printf("%s: del proto for %s%d\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp));
+#endif
 	switch (protocol) {
         case AF_INET:
             ((struct gre_softc*)ifnet_softc(ifp))->proto_flag &= ~AF_INET_PRESENT;
@@ -817,9 +823,7 @@ gre_ioctl(ifnet_t ifp, u_int32_t cmd, void *data)
                 return EINVAL;
             bcopy((caddr_t)src, (caddr_t)dst, src->sa_len);
             break;
-        case GRESKEY:
-            dprintf("\t GRESKEY\n");  // not supported on xnu1228 yet
-            
+        case GRESKEY:            
             error = copyin(CAST_USER_ADDR_T(ifr->ifr_data), &key, sizeof(key));
             if (error)
                 break;
@@ -867,7 +871,9 @@ gre_ioctl(ifnet_t ifp, u_int32_t cmd, void *data)
             error = ENOTSUP;
             break;
         default:
-            dprintf("\t Unkown ioctl flag:IN_OUT: 0x%x \t num: %d \n", cmd & (IOC_INOUT | IOC_VOID), cmd & 0xff);
+#ifdef DEBUG
+            printf("\t Unkown ioctl flag:IN_OUT: 0x%x \t num: %d \n", cmd & (IOC_INOUT | IOC_VOID), cmd & 0xff);
+#endif
             error = EINVAL;
             break;
 	}
@@ -930,9 +936,7 @@ static void gre_if_free(ifnet_t ifp)
  */
 static errno_t
 gre_demux(ifnet_t ifp, mbuf_t m, char *frame_header, protocol_family_t *protocol)
-{
-    dprintf("%s\n", __FUNCTION__);
-    
+{    
     if (frame_header) {
         /*
         switch (*(u_int32_t *)frame_header) {
@@ -957,7 +961,7 @@ gre_demux(ifnet_t ifp, mbuf_t m, char *frame_header, protocol_family_t *protocol
                 *protocol = AF_APPLETALK;
                 break;
             default:
-                dprintf("Proto type %d is not supported yet.\n", *(u_int32_t *)frame_header);
+                printf("Proto type %d is not supported yet.\n", *(u_int32_t *)frame_header);
                 return ENOENT;
         } */
         *protocol = *(u_int32_t *)frame_header;
@@ -978,7 +982,9 @@ gre_demux(ifnet_t ifp, mbuf_t m, char *frame_header, protocol_family_t *protocol
                 *protocol = AF_INET6;
                 break;
             default:
-                dprintf("%s: unsupported IP version %d\n", __FUNCTION__, iphdr->ip_v);
+#ifdef DEBUG
+                printf("%s: unsupported IP version %d\n", __FUNCTION__, iphdr->ip_v);
+#endif
                 return ENOENT;
         }
     }
@@ -994,7 +1000,9 @@ gre_demux(ifnet_t ifp, mbuf_t m, char *frame_header, protocol_family_t *protocol
 static errno_t
 gre_input(ifnet_t ifp, protocol_family_t protocol, mbuf_t m, __unused char *frame_header)
 {
-    dprintf("%s: protocol: %d\n", __FUNCTION__, protocol);
+#ifdef DEBUG
+    printf("%s: protocol: %d\n", __FUNCTION__, protocol);
+#endif
     struct ifnet_stat_increment_param incs;
     
     if (((struct gre_softc *)ifnet_softc(ifp))->bpf_input) {
@@ -1096,7 +1104,7 @@ gre_framer(ifnet_t ifp, mbuf_t *mr, const struct sockaddr *dest, __unused const 
                  * be encapsulated.
                  */
                 if (ip->ip_off & (IP_MF | IP_OFFMASK)) {
-                    dprintf("%s: drop fragmented diagram..\n", __FUNCTION__);
+                    printf("%s: drop fragmented diagram..\n", __FUNCTION__);
                     return EINVAL;    /* is there better errno? */
                 }
                 bzero(&mob_h, MOB_H_SIZ_L);
@@ -1213,10 +1221,9 @@ gre_framer(ifnet_t ifp, mbuf_t *mr, const struct sockaddr *dest, __unused const 
     
     mbuf_set_csum_performed(m, MBUF_CSUM_DID_IP | MBUF_CSUM_IP_GOOD, 0xffff);
     
-    if (m != *mr) {
-        dprintf("%s: mbuf mr changed.\n", __FUNCTION__);
+    if (m != *mr)
         *mr = m;
-    }
+
 #ifdef DEBUG
     printf("%s: done\n", __FUNCTION__);
 #endif

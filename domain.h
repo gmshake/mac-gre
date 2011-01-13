@@ -63,6 +63,8 @@
  * $FreeBSD: src/sys/sys/domain.h,v 1.14 1999/12/29 04:24:40 peter Exp $
  */
 
+/* this is taken from xnu1228.15.4, modified */
+
 #ifndef _PRIVATE_SYS_DOMAIN_H_
 #define _PRIVATE_SYS_DOMAIN_H_
 

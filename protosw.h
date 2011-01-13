@@ -63,6 +63,8 @@
  * $FreeBSD: src/sys/sys/protosw.h,v 1.28.2.2 2001/07/03 11:02:01 ume Exp $
  */
 
+/* this is taken from xnu1228.15.4, modified */
+
 #ifndef _PRIVATE_SYS_PROTOSW_H_
 #define _PRIVATE_SYS_PROTOSW_H_
 

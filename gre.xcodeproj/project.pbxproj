@@ -21,7 +21,6 @@
 		5993EDBF12DC8BBF00177A0C /* protosw.h in Headers */ = {isa = PBXBuildFile; fileRef = 5993EDBE12DC8BBF00177A0C /* protosw.h */; };
 		5993EDC812DC8C7B00177A0C /* domain.h in Headers */ = {isa = PBXBuildFile; fileRef = 5993EDC712DC8C7B00177A0C /* domain.h */; };
 		59DA2AF412DB55DB00C2A1D9 /* gre_domain.h in Headers */ = {isa = PBXBuildFile; fileRef = 59DA2AF312DB55DB00C2A1D9 /* gre_domain.h */; };
-		59F8225712A008E1008B174C /* gre_debug.h in Headers */ = {isa = PBXBuildFile; fileRef = 59F8225612A008E1008B174C /* gre_debug.h */; };
 		59FD48C512DB358000463FB2 /* gre_domain.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FD48C412DB358000463FB2 /* gre_domain.c */; };
 		59FD48C812DB38D700463FB2 /* in_gre.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FD48C612DB38D700463FB2 /* in_gre.h */; };
 		59FD48C912DB38D700463FB2 /* in_gre.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FD48C712DB38D700463FB2 /* in_gre.c */; };
@@ -47,7 +46,6 @@
 		5993EDBE12DC8BBF00177A0C /* protosw.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = protosw.h; sourceTree = "<group>"; };
 		5993EDC712DC8C7B00177A0C /* domain.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = domain.h; sourceTree = "<group>"; };
 		59DA2AF312DB55DB00C2A1D9 /* gre_domain.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gre_domain.h; sourceTree = "<group>"; };
-		59F8225612A008E1008B174C /* gre_debug.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gre_debug.h; sourceTree = "<group>"; };
 		59FD48C412DB358000463FB2 /* gre_domain.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gre_domain.c; sourceTree = "<group>"; };
 		59FD48C612DB38D700463FB2 /* in_gre.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = in_gre.h; sourceTree = "<group>"; };
 		59FD48C712DB38D700463FB2 /* in_gre.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = in_gre.c; sourceTree = "<group>"; };
@@ -114,7 +112,6 @@
 				5993EDBE12DC8BBF00177A0C /* protosw.h */,
 				5993EDC712DC8C7B00177A0C /* domain.h */,
 				59FEBA2A12DEB13E0089AA11 /* gre_config.h */,
-				59F8225612A008E1008B174C /* gre_debug.h */,
 			);
 			name = Source;
 			sourceTree = "<group>";
@@ -139,7 +136,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				59059268129E8B5900E567E9 /* gre_if.h in Headers */,
-				59F8225712A008E1008B174C /* gre_debug.h in Headers */,
 				59636A0212D993420013C8D8 /* gre_hash.h in Headers */,
 				59FD48C812DB38D700463FB2 /* in_gre.h in Headers */,
 				59DA2AF412DB55DB00C2A1D9 /* gre_domain.h in Headers */,

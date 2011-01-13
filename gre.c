@@ -9,7 +9,6 @@
 #include "gre_domain.h"
 #include "gre_ipfilter.h"
 #include "gre_hash.h"
-#include "gre_debug.h"
 
 extern int gre_init();
 extern int gre_dispose();

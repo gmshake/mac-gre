@@ -23,15 +23,13 @@
 #include <security/mac_framework.h>
 #endif
 
-#include "gre_if.h"
+#include "gre_if.h"  //IPPROTO_MOBILE
 #include "gre_ipfilter.h"
 #include "in_gre.h"
-#include "gre_hash.h"
 #include "gre_config.h"
-#include "gre_debug.h"
 
 extern lck_grp_t *gre_lck_grp;
-extern TAILQ_HEAD(gre_softc_head, gre_softc) gre_softc_list;
+//extern TAILQ_HEAD(gre_softc_head, gre_softc) gre_softc_list;
 
 static lck_mtx_t *gre_ipf_mtx = NULL;
 ipfilter_t gre_ipv4filter = NULL;

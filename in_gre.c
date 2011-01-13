@@ -46,11 +46,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*
- * deencapsulate tunneled packets and send them on
- * output half is in net/if_gre.[ch]
- * This currently handles IPPROTO_GRE, IPPROTO_MOBILE
- */
 
 #include <sys/systm.h>
 #include <sys/kpi_mbuf.h>
@@ -68,7 +63,7 @@
 
 #if PROTO_WITH_GRE
 extern lck_mtx_t *inet_domain_mutex;
-extern struct protosw *old_pr_gre, *old_pr_mobile;
+extern struct protosw *old_pr_gre;
 #endif
 
 extern u_int16_t in_cksum(mbuf_t m, int len);
@@ -107,10 +102,10 @@ void in_gre_input(mbuf_t m, int off)
 #endif
 
 /*
- * Decapsulate. Does the real work and is called from gre_input()
- * (above). Returns an mbuf back if packet is not yet processed,
- * and NULL if it needs no further processing. proto is the protocol
- * number of the "calling" foo_input() routine.
+ * Decapsulate. Does the real work and is called from in_gre_input()
+ * (above) or ipv4_infilter(), Returns an mbuf back if packet is not
+ * yet processed, and NULL if it needs no further processing.
+ * proto is the protocol number of the "calling" foo_input() routine.
  */
 mbuf_t in_gre_input2(mbuf_t m ,int hlen)
 {
@@ -127,7 +122,7 @@ mbuf_t in_gre_input2(mbuf_t m ,int hlen)
         return m;
     }
     
-    /* from here on, we increased the sc->sc_refcnt, so decrease it before return */
+    /* from here on, we increased the sc->sc_refcnt, so do remember to decrease it before return */
     
     if (mbuf_len(m) < sizeof(struct greip)) {
         mbuf_pullup(&m, sizeof(struct greip));
@@ -226,7 +221,7 @@ void gre_mobile_input(mbuf_t m, int hlen)
         return;
     }
     
-    /* from here on, we increased the sc->sc_refcnt, so decrease it before return */
+    /* from here on, we increased the sc->sc_refcnt, so do remember to decrease it before return */
     
     if (mbuf_len(m) < sizeof(*mip)) {
         mbuf_pullup(&m, sizeof(*mip));
@@ -287,13 +282,6 @@ done:
 
 /*
  * Find the gre interface associated with our src/dst/proto set.
- *
- * XXXRW: Need some sort of drain/refcount mechanism so that the softc
- * reference remains valid after it's returned from gre_lookup().  Right
- * now, I'm thinking it should be reference-counted with a gre_dropref()
- * when the caller is done with the softc.  This is complicated by how
- * to handle destroying the gre softc; probably using a gre_drain() in
- * in_gre.c during destroy.
  */
 inline struct gre_softc *
 gre_lookup(mbuf_t m, u_int8_t proto)
