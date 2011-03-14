@@ -16,19 +16,17 @@ extern int gre_attach();
 extern errno_t gre_attach_proto_family(ifnet_t ifp, protocol_family_t protocol);
 extern void gre_detach_proto_family(ifnet_t ifp, protocol_family_t protocol);
 
-static int gre_inited = 0;
-
 lck_grp_t *gre_lck_grp = NULL;
 
 kern_return_t gre_start (kmod_info_t * ki, void * data)
 {
-    if (gre_inited)
+    if (gre_lck_grp)
         return KERN_SUCCESS;
     
     /* globle lock group */
     gre_lck_grp = lck_grp_alloc_init("GRE locks", LCK_GRP_ATTR_NULL);
     
-    /* if something fails, the lock won't work */
+    /* if the allocation of lck_grp fails, the KEXT won't work */
     if (gre_lck_grp == NULL) {
         printf("%s: lck_grp_alloc_init failed\n", __FUNCTION__);
         return KERN_FAILURE;
@@ -38,57 +36,30 @@ kern_return_t gre_start (kmod_info_t * ki, void * data)
         goto error;
     if (gre_hash_init() != 0)
         goto error;
-    
-    
-    int err;
-    /* register INET, INET6 adn APPLETALK protocol families */
-    err = proto_register_plumber(PF_INET, APPLE_IF_FAM_TUN, gre_attach_proto_family, gre_detach_proto_family);
-    if (err)
-        printf("gre: could not register AF_INET protocol family: %d\n", err);
-    err = proto_register_plumber(PF_INET6, APPLE_IF_FAM_TUN, gre_attach_proto_family, gre_detach_proto_family);
-    if (err)
-        printf("gre: could not register AF_INET6 protocol family: %d\n", err);
-    err = proto_register_plumber(PF_APPLETALK, APPLE_IF_FAM_TUN, gre_attach_proto_family, gre_detach_proto_family);
-    if (err)
-        printf("gre: could not register AF_APPLETALK protocol family: %d\n", err);
-    
     if (gre_init() != 0)
 		goto error;
     if (gre_ipfilter_init() != 0)
         goto error;
     
-    gre_inited = 1;
     return KERN_SUCCESS;
     
 error:
-    gre_domain_dispose();
-    gre_hash_dispose();
-    gre_dispose();
     gre_ipfilter_dispose();
+    gre_dispose();
+    gre_hash_dispose();
+    gre_domain_dispose();
     
-    proto_unregister_plumber(PF_APPLETALK, APPLE_IF_FAM_TUN);
-    proto_unregister_plumber(PF_INET6, APPLE_IF_FAM_TUN);
-    proto_unregister_plumber(PF_INET, APPLE_IF_FAM_TUN);
-
-    if (gre_lck_grp)
-        lck_grp_free(gre_lck_grp);
+    lck_grp_free(gre_lck_grp);
+    gre_lck_grp = NULL;
+    
     return KERN_FAILURE;
 }
 
 
 kern_return_t gre_stop (kmod_info_t * ki, void * data)
 {
-    if (!gre_inited)
+    if (gre_lck_grp == NULL)
         return KERN_SUCCESS;
-#ifdef DEBUG
-    printf("%s: starting unregister_plumber...\n", __FUNCTION__);
-#endif
-    proto_unregister_plumber(PF_APPLETALK, APPLE_IF_FAM_TUN);
-    proto_unregister_plumber(PF_INET6, APPLE_IF_FAM_TUN);
-    proto_unregister_plumber(PF_INET, APPLE_IF_FAM_TUN);
-#ifdef DEBUG
-    printf("%s: unregister_plumber done\n", __FUNCTION__);
-#endif
     
     if (gre_ipfilter_dispose()) {
         printf("gre: gre_ipfilter_dispose error\n");
@@ -108,7 +79,7 @@ kern_return_t gre_stop (kmod_info_t * ki, void * data)
     }
     
     lck_grp_free(gre_lck_grp);
-
-    gre_inited = 0;
+    gre_lck_grp = NULL;
+    
     return KERN_SUCCESS;
 }

@@ -107,7 +107,7 @@ void in_gre_input(mbuf_t m, int off)
  * yet processed, and NULL if it needs no further processing.
  * proto is the protocol number of the "calling" foo_input() routine.
  */
-mbuf_t in_gre_input2(mbuf_t m ,int hlen)
+inline mbuf_t in_gre_input2(mbuf_t m ,int hlen)
 {
     struct greip *gip;
     struct gre_softc *sc;
@@ -155,18 +155,12 @@ mbuf_t in_gre_input2(mbuf_t m ,int hlen)
                         hlen += 4;
                     /* FALLTHROUGH */
                 case ETHERTYPE_IP:
-                    if (! (sc->proto_flag & AF_INET_PRESENT))
-                        goto done;
                     af = AF_INET;
                     break;
                 case ETHERTYPE_IPV6:
-                    if (! (sc->proto_flag & AF_INET6_PRESENT))
-                        goto done;
                     af = AF_INET6;
                     break;
                 case ETHERTYPE_AT:
-                    if (! (sc->proto_flag & AF_APPLETALK_PRESENT))
-                        goto done;
                     af = AF_APPLETALK;
                     break;
                 default:
@@ -179,7 +173,7 @@ mbuf_t in_gre_input2(mbuf_t m ,int hlen)
             goto done;
     }
     
-    if (hlen > mbuf_pkthdr_len(m)) {
+    if (hlen > mbuf_pkthdr_len(m)) { /* not a valid GRE packet */
         mbuf_freem(m);
         m = NULL;
         goto done;
@@ -190,11 +184,17 @@ mbuf_t in_gre_input2(mbuf_t m ,int hlen)
     mbuf_pkthdr_setrcvif(m, sc->sc_ifp);
     mbuf_pkthdr_setheader(m, &af); /* it's ugly... */
     
-    ifnet_input(sc->sc_ifp, m, NULL);
-    m = NULL;
+    struct ifnet_stat_increment_param incs;
+    bzero(&incs, sizeof(incs));
+    incs.packets_in = 1;
+	incs.bytes_in = mbuf_pkthdr_len(m);
+    
+    ifnet_input(sc->sc_ifp, m, &incs);
+    m = NULL; /* ifnet_input() has freed the mbuf */
 
 done:
     /* since we got sc->sc_refcnt add by one, we decrease it when done */
+    ifnet_release(sc->sc_ifp);
     gre_release(sc);
     return m;
 }
@@ -273,10 +273,15 @@ void gre_mobile_input(mbuf_t m, int hlen)
     mbuf_pkthdr_setrcvif(m, sc->sc_ifp);
     mbuf_pkthdr_setheader(m, NULL);
     
-    ifnet_input(sc->sc_ifp, m, NULL);
+    struct ifnet_stat_increment_param incs;
+    bzero(&incs, sizeof(incs));
+    incs.packets_in = 1;
+	incs.bytes_in = mbuf_pkthdr_len(m);
+    ifnet_input(sc->sc_ifp, m, &incs);
     
 done:
     /* since we got sc->sc_refcnt add by one, we decrease it when done */
+    ifnet_release(sc->sc_ifp);
     gre_release(sc);
 }
 

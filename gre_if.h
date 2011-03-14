@@ -40,7 +40,6 @@
 #ifndef _NET_IF_GRE_H
 #define _NET_IF_GRE_H
 
-
 /*
  * should include these
  */
@@ -50,6 +49,8 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
+
+#include "gre_config.h"
 
 extern lck_rw_t *gre_lck;
 
@@ -86,6 +87,9 @@ struct gre_softc {
     
     bpf_packet_func bpf_input;
     bpf_packet_func bpf_output;
+#if USE_IP_OUTPUT
+    struct route route;   /* route used for ip_output */
+#endif
 };
 
 struct gre_h {

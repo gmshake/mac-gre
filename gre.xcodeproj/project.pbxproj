@@ -11,11 +11,8 @@
 		32A4FEBE0562C75700D090E7 /* gre.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A224C3CFF42312311CA2CB7 /* gre.c */; settings = {ATTRIBUTES = (); }; };
 		59059268129E8B5900E567E9 /* gre_if.h in Headers */ = {isa = PBXBuildFile; fileRef = 59059266129E8B5900E567E9 /* gre_if.h */; };
 		59059269129E8B5900E567E9 /* gre_if.c in Sources */ = {isa = PBXBuildFile; fileRef = 59059267129E8B5900E567E9 /* gre_if.c */; };
-		5927A9F712B5293900E4DED1 /* Welcome.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 5927A9F612B5293900E4DED1 /* Welcome.rtf */; };
-		5927A9F912B5294C00E4DED1 /* ReadMe.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 5927A9F812B5294C00E4DED1 /* ReadMe.rtf */; };
-		5927A9FB12B5295C00E4DED1 /* License.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 5927A9FA12B5295C00E4DED1 /* License.rtf */; };
-		593D97D712DEB917005EE3D3 /* org.gmshake.launchd.GRE.plist in Resources */ = {isa = PBXBuildFile; fileRef = 593D97D612DEB917005EE3D3 /* org.gmshake.launchd.GRE.plist */; };
-		595C460112B66EA700A64934 /* postinstall.sh in Resources */ = {isa = PBXBuildFile; fileRef = 595C460012B66EA700A64934 /* postinstall.sh */; };
+		594EABD412E18C86004B211B /* route.h in Headers */ = {isa = PBXBuildFile; fileRef = 594EABD312E18C86004B211B /* route.h */; };
+		594EABDA12E190DE004B211B /* radix.h in Headers */ = {isa = PBXBuildFile; fileRef = 594EABD912E190DE004B211B /* radix.h */; };
 		59636A0212D993420013C8D8 /* gre_hash.h in Headers */ = {isa = PBXBuildFile; fileRef = 59636A0012D993420013C8D8 /* gre_hash.h */; };
 		59636A0312D993420013C8D8 /* gre_hash.c in Sources */ = {isa = PBXBuildFile; fileRef = 59636A0112D993420013C8D8 /* gre_hash.c */; };
 		5993EDBF12DC8BBF00177A0C /* protosw.h in Headers */ = {isa = PBXBuildFile; fileRef = 5993EDBE12DC8BBF00177A0C /* protosw.h */; };
@@ -40,6 +37,8 @@
 		5927A9F812B5294C00E4DED1 /* ReadMe.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; path = ReadMe.rtf; sourceTree = "<group>"; };
 		5927A9FA12B5295C00E4DED1 /* License.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; path = License.rtf; sourceTree = "<group>"; };
 		593D97D612DEB917005EE3D3 /* org.gmshake.launchd.GRE.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = org.gmshake.launchd.GRE.plist; sourceTree = "<group>"; };
+		594EABD312E18C86004B211B /* route.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = route.h; sourceTree = "<group>"; };
+		594EABD912E190DE004B211B /* radix.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = radix.h; sourceTree = "<group>"; };
 		595C460012B66EA700A64934 /* postinstall.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = postinstall.sh; sourceTree = "<group>"; };
 		59636A0012D993420013C8D8 /* gre_hash.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gre_hash.h; sourceTree = "<group>"; };
 		59636A0112D993420013C8D8 /* gre_hash.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gre_hash.c; sourceTree = "<group>"; };
@@ -111,6 +110,8 @@
 				59FEBA1E12DEAA620089AA11 /* gre_ipfilter.c */,
 				5993EDBE12DC8BBF00177A0C /* protosw.h */,
 				5993EDC712DC8C7B00177A0C /* domain.h */,
+				594EABD312E18C86004B211B /* route.h */,
+				594EABD912E190DE004B211B /* radix.h */,
 				59FEBA2A12DEB13E0089AA11 /* gre_config.h */,
 			);
 			name = Source;
@@ -143,6 +144,8 @@
 				5993EDC812DC8C7B00177A0C /* domain.h in Headers */,
 				59FEBA2112DEAA620089AA11 /* gre_ipfilter.h in Headers */,
 				59FEBA2B12DEB13E0089AA11 /* gre_config.h in Headers */,
+				594EABD412E18C86004B211B /* route.h in Headers */,
+				594EABDA12E190DE004B211B /* radix.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -192,11 +195,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				32A4FEBC0562C75700D090E7 /* InfoPlist.strings in Resources */,
-				5927A9F712B5293900E4DED1 /* Welcome.rtf in Resources */,
-				5927A9F912B5294C00E4DED1 /* ReadMe.rtf in Resources */,
-				5927A9FB12B5295C00E4DED1 /* License.rtf in Resources */,
-				595C460112B66EA700A64934 /* postinstall.sh in Resources */,
-				593D97D712DEB917005EE3D3 /* org.gmshake.launchd.GRE.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

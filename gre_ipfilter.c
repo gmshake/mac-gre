@@ -29,7 +29,6 @@
 #include "gre_config.h"
 
 extern lck_grp_t *gre_lck_grp;
-//extern TAILQ_HEAD(gre_softc_head, gre_softc) gre_softc_list;
 
 static lck_mtx_t *gre_ipf_mtx = NULL;
 ipfilter_t gre_ipv4filter = NULL;
@@ -58,6 +57,7 @@ errno_t gre_ipfilter_init()
     if (gre_ipfilter_attach()) {/* attach ip filter */
         lck_mtx_free(gre_ipf_mtx, gre_lck_grp);
         gre_ipf_mtx = NULL;
+        return -1;
     }
     return 0;
 }
@@ -95,7 +95,7 @@ errno_t gre_ipfilter_dispose()
 errno_t gre_ipfilter_attach()
 {
     if (gre_ipv4filter)
-        return EEXIST;
+        return 0;
 #ifdef DEBUG
     printf("%s\n", __FUNCTION__);
 #endif
