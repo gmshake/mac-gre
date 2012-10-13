@@ -11,6 +11,7 @@
  * should include these
  */
 #include <sys/systm.h>
+#include <sys/socket.h>
 #include <net/if.h>
 #include <netinet/ip.h>
 
@@ -51,7 +52,7 @@ static inline uint32_t gre_hash2(uint32_t k0, uint32_t k1, uint32_t k2)
     //hash ^= hash >> 16;
     //hash ^= (hash >> 8) ^ (hash >> 16) ^ (hash >> 24);
     //hash ^= (hash >> 4) ^ (hash >> 8) ^ (hash >> 12) ^ (hash >> 16) ^ (hash >> 20) ^ (hash >> 24) ^ (hash >> 28);
-    /*
+    
     hash ^= (hash >> 2) ^ (hash >> 4) ^ (hash >> 6) ^ (hash >> 8) ^ (hash >> 10) ^ \
         (hash >> 12) ^ (hash >> 14) ^ (hash >> 16) ^ (hash >> 18) ^ (hash >> 20) ^ \
         (hash >> 22) ^ (hash >> 24) ^ (hash >> 26) ^ (hash >> 28) ^ (hash >> 30);
@@ -252,7 +253,7 @@ struct gre_softc * gre_hash_find(struct in_addr src, struct in_addr dst, u_int8_
             continue;
         }
         gre_reference(sc);
-        if (ifnet_flags(sc->sc_ifp) & (IFF_UP | IFF_RUNNING) == (IFF_UP | IFF_RUNNING) && \
+        if ((ifnet_flags(sc->sc_ifp) & (IFF_UP | IFF_RUNNING)) == (IFF_UP | IFF_RUNNING) && \
             sc->encap_proto == proto && \
             in_hosteq(src, ((struct sockaddr_in *)&sc->gre_psrc)->sin_addr) && \
             in_hosteq(dst, ((struct sockaddr_in *)&sc->gre_pdst)->sin_addr)) {

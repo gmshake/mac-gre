@@ -49,12 +49,13 @@
 
 #include <sys/systm.h>
 #include <sys/kpi_mbuf.h>
+#include <sys/socket.h>
 
 #include <net/bpf.h>
 #include <net/kpi_protocol.h>
 #include <net/if.h>
 #include <net/ethernet.h>
-#include <netat/appletalk.h>
+//#include <netat/appletalk.h>
 
 #include "gre_if.h"
 #include "gre_hash.h"
@@ -160,9 +161,9 @@ inline mbuf_t in_gre_input2(mbuf_t m ,int hlen)
                 case ETHERTYPE_IPV6:
                     af = AF_INET6;
                     break;
-                case ETHERTYPE_AT:
-                    af = AF_APPLETALK;
-                    break;
+                //case ETHERTYPE_AT:
+                //    af = AF_APPLETALK;
+                //    break;
                 default:
                     /* Others not yet supported. */
                     goto done;

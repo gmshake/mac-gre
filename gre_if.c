@@ -54,14 +54,16 @@
 #include <sys/malloc.h>
 #include <sys/kpi_mbuf.h>
 #include <sys/sysctl.h>
+#include <sys/socket.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
 #include <net/bpf.h>
 #include <net/kpi_protocol.h>
 #include <net/ethernet.h>
+#ifdef OSX_10_5
 #include <netat/appletalk.h>
-
+#endif
 #include <netinet/in.h>
 #include <netinet/in_var.h>
 #include <netinet/ip.h>
@@ -101,7 +103,7 @@ static errno_t  gre_detach(ifnet_t ifp);
 static errno_t  gre_add_proto(ifnet_t ifp, protocol_family_t protocol, const struct ifnet_demux_desc *demux_array, u_int32_t demux_count);
 static errno_t  gre_del_proto(ifnet_t ifp, protocol_family_t protocol);
 
-static errno_t  gre_ioctl(ifnet_t ifp, u_int32_t cmd, void *data);
+static errno_t  gre_ioctl(ifnet_t ifp, unsigned long cmd, void *data);
 static errno_t  gre_set_bpf_tap(ifnet_t ifp, bpf_tap_mode mode, bpf_packet_func func);
 static void     gre_if_free(ifnet_t ifp);
 
@@ -543,7 +545,7 @@ gre_del_proto(ifnet_t ifp, protocol_family_t protocol)
  * communicate ioctls from the stack to the driver.
  */
 static errno_t
-gre_ioctl(ifnet_t ifp, u_int32_t cmd, void *data)
+gre_ioctl(ifnet_t ifp, unsigned long cmd, void *data)
 {
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct gre_softc *sc = ifnet_softc(ifp);
@@ -906,7 +908,7 @@ recompute:
         case SIOCGIFSTATUS:
             break;
         case SIOCSIFMEDIA:
-        case SIOCGIFMEDIA:
+        //case SIOCGIFMEDIA:
         case SIOCSIFBOND:
         case SIOCGIFBOND:
         case SIOCSIFVLAN:
@@ -915,7 +917,7 @@ recompute:
             break;
         default:
 #ifdef DEBUG
-            printf("\t Unkown ioctl flag:IN_OUT: 0x%x \t num: %d \n", cmd & (IOC_INOUT | IOC_VOID), cmd & 0xff);
+            printf("\t Unkown ioctl flag:IN_OUT: 0x%lx \t num: %ld \n", cmd & (IOC_INOUT | IOC_VOID), cmd & 0xff);
 #endif
             error = EINVAL;
             break;
@@ -1197,7 +1199,7 @@ gre_framer(ifnet_t ifp, mbuf_t *mr, const struct sockaddr *dest, __unused const 
                     break;
                 case AF_APPLETALK:
                     gre_ip_id = ip_randomid();
-                    etype = ETHERTYPE_AT;
+                    //etype = ETHERTYPE_AT;
                     break;
                 default:
                     return EAFNOSUPPORT;
@@ -1259,7 +1261,7 @@ static errno_t gre_output(ifnet_t ifp, mbuf_t m) //, struct sockaddr *dst)
 {
     errno_t err;
     struct gre_softc *sc = ifnet_softc(ifp);
-    if (ifnet_flags(ifp) & (IFF_UP | IFF_RUNNING) != (IFF_UP | IFF_RUNNING) || \
+    if ((ifnet_flags(ifp) & (IFF_UP | IFF_RUNNING)) != (IFF_UP | IFF_RUNNING) || \
         sc->gre_psrc.sa_family == AF_UNSPEC || \
         sc->gre_pdst.sa_family == AF_UNSPEC) {
         mbuf_freem(m);

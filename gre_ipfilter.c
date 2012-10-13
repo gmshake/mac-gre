@@ -9,10 +9,11 @@
 
 #include <sys/systm.h>
 #include <sys/kpi_mbuf.h>
+#include <sys/socket.h>
 
 #include <net/if.h>
 #include <net/ethernet.h>
-#include <netat/appletalk.h>
+//#include <netat/appletalk.h>
 
 #include <netinet/in.h>
 #include <netinet/ip.h>

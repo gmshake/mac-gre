@@ -121,7 +121,7 @@ struct rtentry {
 	caddr_t	rt_llinfo;		/* pointer to link level info cache */
 	struct	rt_metrics rt_rmx;	/* metrics used by rx'ing protocols */
 	struct	rtentry *rt_gwroute;	/* implied entry for gatewayed routes */
-	int	(*rt_output)(struct ifnet *, mbuf_t,
+	int	(*rt_output)(ifnet_t, mbuf_t,
 			     struct sockaddr *, struct rtentry *);
 					/* output routine for this (rt,if) */
 	struct	rtentry *rt_parent;	/* cloning parent of this route */
