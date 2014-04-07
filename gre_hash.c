@@ -43,6 +43,7 @@ static inline uint32_t gre_hash(uint32_t k0, uint32_t k1, uint32_t k2)
     //hash ^= (hash >> 8) ^ (hash >> 16) ^ (hash >> 24);
     hash ^= hash >> 16;
     return hash;
+#undef BIGPRIME
 }
 /*
 static inline uint32_t gre_hash2(uint32_t k0, uint32_t k1, uint32_t k2)

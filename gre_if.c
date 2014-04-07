@@ -136,7 +136,7 @@ int gre_init()
 #endif
         return 0;
     }
-    
+
     gre_lck = lck_rw_alloc_init(gre_lck_grp, NULL);
     if (gre_lck == NULL) {
 #ifdef DEBUG
@@ -146,7 +146,7 @@ int gre_init()
     }
 
     TAILQ_INIT(&gre_softc_list);
-    
+
     int err;
     /* register INET, INET6 adn APPLETALK protocol families */
     err = proto_register_plumber(PF_INET, APPLE_IF_FAM_TUN, gre_attach_proto_family, gre_detach_proto_family);
@@ -158,10 +158,10 @@ int gre_init()
     err = proto_register_plumber(PF_APPLETALK, APPLE_IF_FAM_TUN, gre_attach_proto_family, gre_detach_proto_family);
     if (err)
         printf("%s: could not register AF_APPLETALK protocol family: %d\n", __FUNCTION__, err);
-    
+
     /* add first gre interface */
     gre_attach();
-    
+
 #ifdef DEBUG
     printf("%s: done\n", __FUNCTION__);
 #endif
@@ -357,20 +357,26 @@ error:
  * gre_detach(), detach a interface
  */
 static errno_t gre_detach(ifnet_t ifp)
-{    
+{
+    errno_t ret = 0;
     if (ifp == NULL)
         goto done;
 #ifdef DEBUG
     printf("%s: detach %s%d\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp));
 #endif
-    errno_t ret;
+
     struct gre_softc *sc = ifnet_softc(ifp);
+
+    if (ifnet_flags(ifp) & IFF_UP || ifnet_flags(ifp) & IFF_RUNNING) {
+        ret = ifnet_set_flags(ifp, 0, IFF_UP | IFF_RUNNING);
+        if (ret != 0) {
+            printf("%s: failed to bring %s%d down:%d\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp), ret);
+            goto done;
+        }
+    }
     
     gre_hash_delete(sc);
-    
-    if (ifnet_flags(ifp) & IFF_UP || ifnet_flags(ifp) & IFF_RUNNING)
-        ifnet_set_flags(ifp, 0, IFF_UP | IFF_RUNNING);
-        
+
     // detach protocols when detaching interface, just in case not done ... 
     if (sc->proto_flag & AF_APPLETALK_PRESENT)
         gre_detach_proto_family(ifp, AF_APPLETALK);
@@ -378,7 +384,7 @@ static errno_t gre_detach(ifnet_t ifp)
         gre_detach_proto_family(ifp, AF_INET6);
     if (sc->proto_flag & AF_INET_PRESENT)
         gre_detach_proto_family(ifp, AF_INET);
-    
+
     lck_mtx_lock(sc->mtx);
     sc->is_detaching = 1;
     lck_mtx_unlock(sc->mtx);
@@ -401,7 +407,7 @@ static errno_t gre_detach(ifnet_t ifp)
     }
     ifnet_release(ifp);
     sc->sc_ifp = NULL;
-    
+
     /* Release the route */
 	if (sc->route.ro_rt) {
 		rtfree(sc->route.ro_rt);
