@@ -10,6 +10,9 @@
 #ifndef _GRE_CONFIG_H
 #define _GRE_CONFIG_H
 
+#include "kernel_build.h"
+
+
 /*
  * we got a anoying bug here, that Apple's implementation of PPTP
  * take the slot ip_protox[IPPROTO_GRE], and if kextload/kextunload is 
@@ -20,15 +23,24 @@
  */
 #define PROTO_WITH_GRE 0
 
+#define PROTO_WITH_MOBILE 0
+
+#define MACOSX_10_9 1
+
 /*
  * as ipf_output() would send our packet to the wrong interface when tunnel
  * dst and p-p remote is the same one, I'm considering allocating a properer route
  * and send the packet with ip_output(), setting USE_IP_OUTPUT to 1
  */
-#define USE_IP_OUTPUT 1
+#define USE_IP_OUTPUT 0
 
 #if USE_IP_OUTPUT
+
+#if MACOSX_10_9
+#include "10.9/route.h"
+#else
 #include "route.h"
+#endif
 
 #define	IP_FORWARDING		0x1		/* most of ip header exists */
 #define	IP_RAWOUTPUT		0x2		/* raw ip header exists */

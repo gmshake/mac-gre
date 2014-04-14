@@ -65,24 +65,31 @@ static inline uint32_t gre_hash2(uint32_t k0, uint32_t k1, uint32_t k2)
  */
 errno_t gre_hash_init()
 {
+#ifdef DEBUG
+    printf("%s ...\n", __FUNCTION__);
+#endif
     if (gre_slot_lck != NULL) {
 #ifdef DEBUG
-        printf("%s: warnning: gre_slot_lck has inited\n", __FUNCTION__);
+        printf("%s: warnning: gre_slot_lck has already been inited\n", __FUNCTION__);
 #endif
-        return 0;
+        goto success;
     }
-    
+
     gre_slot_lck = lck_rw_alloc_init(gre_lck_grp, NULL);
-    if (gre_slot_lck == NULL) {
-#ifdef DEBUG
-        printf("%s: error\n", __FUNCTION__);
-#endif
-        return -1;
-    }
+    if (gre_slot_lck == NULL)
+        goto failed;
+
+success:
 #ifdef DEBUG
     printf("%s: done\n", __FUNCTION__);
 #endif
     return 0;
+
+failed:
+#ifdef DEBUG
+    printf("%s: error\n", __FUNCTION__);
+#endif
+    return -1;
 }
 
 /*
@@ -91,6 +98,9 @@ errno_t gre_hash_init()
  */
 void gre_hash_dispose()
 {
+#ifdef DEBUG
+    printf("%s ...\n", __FUNCTION__);
+#endif
     if (gre_slot_lck == NULL) {
 #ifdef DEBUG
         printf("%s: warnning: gre_slot_lck has already been freed\n", __FUNCTION__);

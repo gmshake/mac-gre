@@ -255,7 +255,7 @@ __END_DECLS
 #endif /* KERNEL */
 
 __BEGIN_DECLS
-struct protosw *pffindproto(int family, int protocol, int type);
+//struct protosw *pffindproto(int family, int protocol, int type);
 
 extern int net_add_proto(struct protosw *, struct domain *);
 extern int net_del_proto(int, int, struct domain *);
