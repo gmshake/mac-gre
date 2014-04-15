@@ -9,11 +9,10 @@
 
 #include <sys/systm.h>
 #include <sys/kpi_mbuf.h>
-#include <sys/socket.h>
 
 #include <net/if.h>
 #include <net/ethernet.h>
-//#include <netat/appletalk.h>
+#include <netat/appletalk.h>
 
 #include <netinet/in.h>
 #include <netinet/ip.h>
@@ -32,7 +31,7 @@
 extern lck_grp_t *gre_lck_grp;
 
 static lck_mtx_t *gre_ipf_mtx = NULL;
-static ipfilter_t gre_ipv4filter = NULL;
+ipfilter_t gre_ipv4filter = NULL;
 
 static errno_t ipv4_infilter(void *cookie, mbuf_t *m, int offset, u_int8_t protocol);
 static void ipv4_if_detach(void *cookie);
@@ -42,39 +41,25 @@ static void ipv4_if_detach(void *cookie);
  */
 errno_t gre_ipfilter_init()
 {
-#ifdef DEBUG
-    printf("%s ...\n", __FUNCTION__);
-#endif
 
     if (gre_ipf_mtx != NULL) {
 #ifdef DEBUG
         printf("%s: gre_ifp_mtx already inited\n", __FUNCTION__);
 #endif
-        goto success;
+        return 0;
     }
-
+    
     gre_ipf_mtx = lck_mtx_alloc_init(gre_lck_grp, NULL);
-
+    
     if (gre_ipf_mtx == NULL)
-        goto failed;
-
+        return -1;
+    
     if (gre_ipfilter_attach()) {/* attach ip filter */
         lck_mtx_free(gre_ipf_mtx, gre_lck_grp);
         gre_ipf_mtx = NULL;
-        goto failed;
+        return -1;
     }
-
-success:
-#ifdef DEBUG
-    printf("%s: done\n", __FUNCTION__);
-#endif
     return 0;
-
-failed:
-#ifdef DEBUG
-    printf("%s: fail\n", __FUNCTION__);
-#endif
-    return -1;
 }
 
 /*
@@ -82,10 +67,6 @@ failed:
  */
 errno_t gre_ipfilter_dispose()
 {
-#ifdef DEBUG
-    printf("%s ...\n", __FUNCTION__);
-#endif
-
     if (gre_ipf_mtx == NULL) {
 #ifdef DEBUG
         printf("%s: gre_ifp_mtx already freed\n", __FUNCTION__);
@@ -116,7 +97,7 @@ errno_t gre_ipfilter_attach()
     if (gre_ipv4filter)
         return 0;
 #ifdef DEBUG
-    printf("%s ...\n", __FUNCTION__);
+    printf("%s\n", __FUNCTION__);
 #endif
     errno_t err = 0;
     struct ipf_filter ipf;
@@ -130,9 +111,7 @@ errno_t gre_ipfilter_attach()
 	err = ipf_addv4(&ipf, &gre_ipv4filter);
     if (err)
         printf("%s: ipf_addv4(), err=0x%x\n", __FUNCTION__, err);
-#ifdef DEBUG
-    printf("%s: done\n", __FUNCTION__);
-#endif
+
     return err;
 }
 
@@ -144,7 +123,7 @@ errno_t gre_ipfilter_detach()
     if (gre_ipv4filter == NULL)
         return 0;
 #ifdef DEBUG
-    printf("%s ...\n", __FUNCTION__);
+    printf("%s\n", __FUNCTION__);
 #endif
     errno_t err = 0;
     
@@ -165,9 +144,7 @@ errno_t gre_ipfilter_detach()
     } else {
         lck_mtx_unlock(gre_ipf_mtx);
     }
-#ifdef DEBUG
-    printf("%s: done\n", __FUNCTION__);
-#endif
+    
     return err;
 }
 

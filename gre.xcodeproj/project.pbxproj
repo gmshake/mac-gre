@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 46;
+	objectVersion = 45;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -24,9 +24,6 @@
 		59FEBA2012DEAA620089AA11 /* gre_ipfilter.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FEBA1E12DEAA620089AA11 /* gre_ipfilter.c */; };
 		59FEBA2112DEAA620089AA11 /* gre_ipfilter.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FEBA1F12DEAA620089AA11 /* gre_ipfilter.h */; };
 		59FEBA2B12DEB13E0089AA11 /* gre_config.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FEBA2A12DEB13E0089AA11 /* gre_config.h */; };
-		6C1F2DEA18F2E0EE002EC1E7 /* radix.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C1F2DE918F2E0EE002EC1E7 /* radix.h */; };
-		6C1F2DEC18F2E15F002EC1E7 /* route.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C1F2DEB18F2E15F002EC1E7 /* route.h */; };
-		6C1F2DF018F2E2B9002EC1E7 /* kernel_build.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C1F2DEF18F2E2B9002EC1E7 /* kernel_build.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -54,10 +51,7 @@
 		59FEBA1E12DEAA620089AA11 /* gre_ipfilter.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gre_ipfilter.c; sourceTree = "<group>"; };
 		59FEBA1F12DEAA620089AA11 /* gre_ipfilter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gre_ipfilter.h; sourceTree = "<group>"; };
 		59FEBA2A12DEB13E0089AA11 /* gre_config.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gre_config.h; sourceTree = "<group>"; };
-		6C1F2DE918F2E0EE002EC1E7 /* radix.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = radix.h; path = 10.9/radix.h; sourceTree = "<group>"; };
-		6C1F2DEB18F2E15F002EC1E7 /* route.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = route.h; path = 10.9/route.h; sourceTree = "<group>"; };
-		6C1F2DEF18F2E2B9002EC1E7 /* kernel_build.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kernel_build.h; sourceTree = "<group>"; };
-		D27513B306A6225300ADB3A4 /* Kernel.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Kernel.framework; path = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk/System/Library/Frameworks/Kernel.framework; sourceTree = "<absolute>"; };
+		D27513B306A6225300ADB3A4 /* Kernel.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Kernel.framework; path = /System/Library/Frameworks/Kernel.framework; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,7 +97,6 @@
 		247142CAFF3F8F9811CA285C /* Source */ = {
 			isa = PBXGroup;
 			children = (
-				6C1F2DEE18F2E1BE002EC1E7 /* 10.9 */,
 				1A224C3CFF42312311CA2CB7 /* gre.c */,
 				59059266129E8B5900E567E9 /* gre_if.h */,
 				59059267129E8B5900E567E9 /* gre_if.c */,
@@ -120,7 +113,6 @@
 				594EABD312E18C86004B211B /* route.h */,
 				594EABD912E190DE004B211B /* radix.h */,
 				59FEBA2A12DEB13E0089AA11 /* gre_config.h */,
-				6C1F2DEF18F2E2B9002EC1E7 /* kernel_build.h */,
 			);
 			name = Source;
 			sourceTree = "<group>";
@@ -137,15 +129,6 @@
 			name = Other;
 			sourceTree = "<group>";
 		};
-		6C1F2DEE18F2E1BE002EC1E7 /* 10.9 */ = {
-			isa = PBXGroup;
-			children = (
-				6C1F2DEB18F2E15F002EC1E7 /* route.h */,
-				6C1F2DE918F2E0EE002EC1E7 /* radix.h */,
-			);
-			name = 10.9;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -153,17 +136,14 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				6C1F2DEC18F2E15F002EC1E7 /* route.h in Headers */,
 				59059268129E8B5900E567E9 /* gre_if.h in Headers */,
 				59636A0212D993420013C8D8 /* gre_hash.h in Headers */,
 				59FD48C812DB38D700463FB2 /* in_gre.h in Headers */,
 				59DA2AF412DB55DB00C2A1D9 /* gre_domain.h in Headers */,
-				6C1F2DF018F2E2B9002EC1E7 /* kernel_build.h in Headers */,
 				5993EDBF12DC8BBF00177A0C /* protosw.h in Headers */,
 				5993EDC812DC8C7B00177A0C /* domain.h in Headers */,
 				59FEBA2112DEAA620089AA11 /* gre_ipfilter.h in Headers */,
 				59FEBA2B12DEB13E0089AA11 /* gre_config.h in Headers */,
-				6C1F2DEA18F2E0EE002EC1E7 /* radix.h in Headers */,
 				594EABD412E18C86004B211B /* route.h in Headers */,
 				594EABDA12E190DE004B211B /* radix.h in Headers */,
 			);
@@ -197,16 +177,9 @@
 /* Begin PBXProject section */
 		089C1669FE841209C02AAC07 /* Project object */ = {
 			isa = PBXProject;
-			attributes = {
-				LastUpgradeCheck = 0450;
-			};
 			buildConfigurationList = 1DEB91C708733DAC0010E9CD /* Build configuration list for PBXProject "gre" */;
-			compatibilityVersion = "Xcode 3.2";
-			developmentRegion = English;
+			compatibilityVersion = "Xcode 3.1";
 			hasScannedForEncodings = 1;
-			knownRegions = (
-				en,
-			);
 			mainGroup = 089C166AFE841209C02AAC07 /* gre */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -269,8 +242,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
-				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				GCC_DYNAMIC_NO_PIC = NO;
@@ -283,7 +254,6 @@
 				MODULE_STOP = gre_stop;
 				MODULE_VERSION = 1.0.0d1;
 				PRODUCT_NAME = GRE;
-				SDKROOT = macosx;
 				WRAPPER_EXTENSION = kext;
 			};
 			name = Debug;
@@ -292,11 +262,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
-				COMBINE_HIDPI_IMAGES = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				GCC_MODEL_TUNING = G5;
-				GCC_VERSION = "";
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "$(SYSTEM_LIBRARY_DIR)/Extensions";
 				MODULE_NAME = org.gmshake.nke.GRE;
@@ -304,7 +271,6 @@
 				MODULE_STOP = gre_stop;
 				MODULE_VERSION = 1.0.0d1;
 				PRODUCT_NAME = GRE;
-				SDKROOT = macosx;
 				WRAPPER_EXTENSION = kext;
 			};
 			name = Release;
@@ -319,8 +285,9 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = "-DDEBUG";
+				PREBINDING = NO;
 				PRODUCT_NAME = GRE;
-				SDKROOT = macosx;
+				SDKROOT = macosx10.5;
 			};
 			name = Debug;
 		};
@@ -329,11 +296,12 @@
 			buildSettings = {
 				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
 				GCC_C_LANGUAGE_STANDARD = c99;
-				GCC_VERSION = "";
+				GCC_VERSION = com.apple.compilers.llvmgcc42;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				PREBINDING = NO;
 				PRODUCT_NAME = GRE;
-				SDKROOT = macosx;
+				SDKROOT = macosx10.5;
 			};
 			name = Release;
 		};
