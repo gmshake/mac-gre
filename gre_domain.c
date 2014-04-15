@@ -9,7 +9,6 @@
 
 #include <sys/systm.h>
 #include <sys/sysctl.h>
-#include <sys/socket.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -25,16 +24,22 @@
 
 struct socket;
 
-#if PROTO_WITH_GRE && PROTO_WITH_MOBILE
+//extern lck_mtx_t *rt_mtx;
 extern lck_mtx_t *ip_mutex;
-extern struct protosw *ip_protox[IPPROTO_MAX];
 #ifdef DEBUG
 extern lck_mtx_t *inet_domain_mutex;
 #endif
-#endif
+extern struct protosw *ip_protox[IPPROTO_MAX];
 
 extern unsigned int max_gre_nesting;
 extern lck_grp_t *gre_lck_grp;
+
+static lck_mtx_t *gre_domain_lck = NULL;
+static struct domain *inet_domain = NULL;
+#if PROTO_WITH_GRE
+struct protosw *old_pr_gre;
+#endif
+struct protosw *old_pr_mobile;
 
 extern int sosend(struct socket *, struct sockaddr *, struct uio *, struct mbuf *, struct mbuf *, int );
 extern int soreceive(struct socket *, struct sockaddr **, struct uio *, struct mbuf **, struct mbuf **, int *);
@@ -43,18 +48,6 @@ int gre_proto_attach(struct socket *, int, struct proc *);
 int gre_proto_detach(struct socket *);
 int	gre_proto_ioctl(struct socket *, u_long, caddr_t, struct ifnet *, struct proc *);
 
-
-#if PROTO_WITH_GRE && PROTO_WITH_MOBILE
-static lck_mtx_t *gre_domain_lck = NULL;
-static struct domain *inet_domain = NULL;
-
-#if PROTO_WITH_GRE
-struct protosw *old_pr_gre;
-#endif
-#if PROTO_WITH_MOBILE
-struct protosw *old_pr_mobile;
-#endif
-
 struct pr_usrreqs gre_usrreqs = {
 pru_abort_notsupp, pru_accept_notsupp, gre_proto_attach, pru_bind_notsupp, pru_connect_notsupp,
 pru_connect2_notsupp, gre_proto_ioctl, gre_proto_detach, pru_disconnect_notsupp,
@@ -62,7 +55,6 @@ pru_listen_notsupp, pru_peeraddr_notsupp, pru_rcvd_notsupp,
 pru_rcvoob_notsupp, pru_send_notsupp, pru_sense_null, pru_shutdown_notsupp,
 pru_sockaddr_notsupp, sosend, soreceive, pru_sopoll_notsupp
 };
-#endif
 
 #if PROTO_WITH_GRE
 static struct protosw in_gre_protosw = {
@@ -75,8 +67,6 @@ static struct protosw in_gre_protosw = {
         .pr_usrreqs =           &gre_usrreqs
 };
 #endif
-
-#if PROTO_WITH_MOBILE
 static struct protosw in_mobile_protosw = {
         .pr_type =              SOCK_RAW,
         .pr_domain =            NULL,
@@ -86,17 +76,16 @@ static struct protosw in_mobile_protosw = {
         .pr_ctloutput =         NULL,
         .pr_usrreqs =           &gre_usrreqs
 };
-#endif
 
-//SYSCTL_DECL(net_link);
-//SYSCTL_NODE(net_link, IFT_OTHER, gre, CTLFLAG_RW, 0, "Generic Routing Encapsulation");
-//SYSCTL_UINT(net_link_gre, OID_AUTO, maxnesting, CTLTYPE_INT | CTLFLAG_RW, &max_gre_nesting, 0, "Max nested tunnels");
+
+SYSCTL_DECL(_net);
+SYSCTL_NODE(_net, IFT_OTHER, gre, CTLFLAG_RW, 0, "Generic Routing Encapsulation");
+SYSCTL_UINT(_net_gre, OID_AUTO, maxnesting, CTLTYPE_INT | CTLFLAG_RW, &max_gre_nesting, 0, "Max nested tunnels");
 
 extern struct domain *pffinddomain(int);
 
 int gre_domain_init()
 {
-#if PROTO_WITH_GRE && PROTO_WITH_MOBILE
     if (gre_domain_lck) {
 #ifdef DEBUG
         printf("%s: has already inited\n", __FUNCTION__);
@@ -120,25 +109,27 @@ int gre_domain_init()
 #if PROTO_WITH_GRE
     in_gre_protosw.pr_domain    = inet_domain;
 #endif
-#if PROTO_WITH_MOBILE
     in_mobile_protosw.pr_domain = inet_domain;
-#endif
     gre_domain_lck = inet_domain->dom_mtx;
-
+    
 #ifdef DEBUG
     if (gre_domain_lck != inet_domain_mutex)
         printf("%s: inet_domain_mutex is different\n", __FUNCTION__);
 #endif
-
+    
+    /*
+     * there seems to be some bug here, that is anoying
+     */
+    sysctl_register_oid(&sysctl__net_gre);
+    //sysctl_register_oid(&sysctl__net_gre_maxnesting);
+    
     lck_mtx_lock(gre_domain_lck);
 #if PROTO_WITH_GRE
     net_add_proto(&in_gre_protosw, inet_domain);
 #endif
-#if PROTO_WITH_MOBILE
     net_add_proto(&in_mobile_protosw, inet_domain);
-#endif
     lck_mtx_unlock(gre_domain_lck);
-
+    
     lck_mtx_lock(ip_mutex);
 #ifdef DEBUG
     /* hack: sigh!!! */
@@ -147,51 +138,39 @@ int gre_domain_init()
         printf("warning: proto IPPROTO_GRE has already been registerd\n");
     }
 #endif
-#if PROTO_WITH_MOBILE
     if (ip_protox[IPPROTO_MOBILE] != pr) {
         printf("warning: proto IPPROTO_MOBILE has already been registerd\n");
     }
 #endif
-#endif
 #if PROTO_WITH_GRE
     old_pr_gre = ip_protox[IPPROTO_GRE];
 #endif
-#if PROTO_WITH_MOBILE
     old_pr_mobile = ip_protox[IPPROTO_MOBILE];
-#endif
+    
 #if PROTO_WITH_GRE
     ip_protox[IPPROTO_GRE] = &in_gre_protosw;
 #endif
-#if PROTO_WITH_MOBILE
     ip_protox[IPPROTO_MOBILE] = &in_mobile_protosw;
-#endif
     lck_mtx_unlock(ip_mutex);
-#endif
+    
 #ifdef DEBUG
-#endif
-    /*
-     * there seems to be some bug here, that is anoying
-     */
-//    sysctl_register_oid(&sysctl_net_link_gre);
-//    sysctl_register_oid(&sysctl_net_link_gre_maxnesting);
     printf("%s: done\n", __FUNCTION__);
-
+#endif
     return 0;
 }
 
 int gre_domain_dispose()
 {
-    int err = 0;
-#if PROTO_WITH_GRE && PROTO_WITH_MOBILE
     if (gre_domain_lck == NULL) {
 #ifdef DEBUG
         printf("%s: has already disposed\n", __FUNCTION__);
 #endif
         return 0;
     }
+    
+    int err = 0;
 
     lck_mtx_lock(ip_mutex);
-#if PROTO_WITH_MOBILE
     /* hack: sigh... */
     if (ip_protox[IPPROTO_MOBILE] != &in_mobile_protosw) {
         printf("warning: proto IPPROTO_MOBILE has been modified by other KEXT\n"); /* wait other change it back */
@@ -206,8 +185,7 @@ int gre_domain_dispose()
         goto error;
     }
     ip_protox[IPPROTO_MOBILE] = old_pr_mobile;
-#endif
-
+    
 nextproto:
 #if PROTO_WITH_GRE
     if (ip_protox[IPPROTO_GRE] != &in_gre_protosw) {
@@ -234,13 +212,12 @@ pgredone:
     net_del_proto(SOCK_RAW, IPPROTO_GRE, inet_domain);
 #endif
     lck_mtx_unlock(gre_domain_lck);
-
+    
+    //sysctl_unregister_oid(&sysctl__net_gre_maxnesting);
+    sysctl_unregister_oid(&sysctl__net_gre);
+    
     gre_domain_lck = NULL;
-#endif
-
-//    sysctl_unregister_oid(&sysctl_net_link_gre_maxnesting);
-//    sysctl_unregister_oid(&sysctl_net_link_gre);
-
+    
 error:
 #ifdef DEBUG
     printf("%s: %s\n", __FUNCTION__, err ? "error" : "done");
