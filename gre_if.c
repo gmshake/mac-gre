@@ -138,8 +138,9 @@ static unsigned int max_gre_nesting = MAX_GRE_NEST;
 #undef MAX_GRE_NEST
 #endif
 
-//SYSCTL_DECL(_net_gre);
-//SYSCTL_UINT(_net_gre, OID_AUTO, maxnesting, CTLTYPE_INT | CTLFLAG_RW, &max_gre_nesting, 0, "Max nested tunnels");
+SYSCTL_DECL(_net_gre);
+SYSCTL_UINT(_net_gre, OID_AUTO, maxnesting, CTLTYPE_INT | CTLFLAG_RW, &max_gre_nesting, 0, "Max nested tunnels");
+//SYSCTL_UINT(net_link_gre, OID_AUTO, maxnesting, CTLTYPE_INT | CTLFLAG_RW, &max_gre_nesting, 0, "Max nested tunnels");
 
 int gre_init()
 {
@@ -183,7 +184,7 @@ int gre_init()
     /* add first gre interface */
     gre_attach();
 
-//    sysctl_register_oid(&sysctl__net_gre_maxnesting);
+    sysctl_register_oid(&sysctl__net_gre_maxnesting);
 
 success:
 #ifdef DEBUG
@@ -212,7 +213,7 @@ int gre_dispose()
         goto success;
     }
 
-//    sysctl_unregister_oid(&sysctl__net_gre_maxnesting);
+    sysctl_unregister_oid(&sysctl__net_gre_maxnesting);
 
     struct gre_softc *sc;
     TAILQ_FOREACH(sc, &gre_softc_list, sc_list) {

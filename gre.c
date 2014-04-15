@@ -21,8 +21,7 @@ extern void gre_detach_proto_family(ifnet_t ifp, protocol_family_t protocol);
 
 
 //SYSCTL_DECL(_net_link);
-//SYSCTL_NODE(_net, IFT_OTHER, gre, CTLFLAG_RW|CTLFLAG_LOCKED, 0, "Generic Routing Encapsulation");
-//SYSCTL_UINT(net_link_gre, OID_AUTO, maxnesting, CTLTYPE_INT | CTLFLAG_RW, &max_gre_nesting, 0, "Max nested tunnels");
+SYSCTL_NODE(_net, OID_AUTO, gre, CTLFLAG_RW|CTLFLAG_LOCKED, 0, "Generic Routing Encapsulation");
 
 lck_grp_t *gre_lck_grp = NULL;
 
@@ -55,7 +54,7 @@ kern_return_t gre_start(kmod_info_t *ki, void *data)
     if (gre_ipfilter_init() != 0)
         goto error;
 
-//    sysctl_register_oid(&sysctl__net_gre);
+    sysctl_register_oid(&sysctl__net_gre);
 success:
 #ifdef DEBUG
     printf("%s: done\n", __FUNCTION__);
@@ -87,7 +86,7 @@ kern_return_t gre_stop(kmod_info_t *ki, void *data)
     if (gre_lck_grp == NULL)
         goto success;
 
-//    sysctl_unregister_oid(&sysctl__net_gre);
+    sysctl_unregister_oid(&sysctl__net_gre);
 
     if (gre_ipfilter_dispose()) {
         printf("gre: gre_ipfilter_dispose error\n");
