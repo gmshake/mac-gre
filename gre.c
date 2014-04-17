@@ -9,7 +9,6 @@
 #include <net/if_var.h>
 #include <net/kpi_protocol.h>
 
-#include "gre_domain.h"
 #include "gre_ipfilter.h"
 #include "gre_hash.h"
 
@@ -21,9 +20,6 @@ extern void gre_proto_unregister();
 extern errno_t gre_attach_proto_family(ifnet_t ifp, protocol_family_t protocol);
 extern void gre_detach_proto_family(ifnet_t ifp, protocol_family_t protocol);
 
-
-//SYSCTL_DECL(_net_link);
-SYSCTL_NODE(_net, OID_AUTO, gre, CTLFLAG_RW|CTLFLAG_LOCKED, 0, "Generic Routing Encapsulation");
 
 lck_grp_t *gre_lck_grp = NULL;
 
@@ -56,7 +52,8 @@ kern_return_t gre_start(kmod_info_t *ki, void *data)
     if (gre_ipfilter_init() != 0)
         goto error;
 
-    sysctl_register_oid(&sysctl__net_gre);
+    /* add first gre interface */
+    gre_if_attach();
 
 success:
 #ifdef DEBUG
@@ -88,8 +85,6 @@ kern_return_t gre_stop(kmod_info_t *ki, void *data)
 #endif
     if (gre_lck_grp == NULL)
         goto success;
-
-    sysctl_unregister_oid(&sysctl__net_gre);
 
     if (gre_ipfilter_dispose()) {
         printf("gre: gre_ipfilter_dispose error\n");

@@ -48,9 +48,7 @@
 #ifndef _IN_GRE_H
 #define _IN_GRE_H
 
-#include "gre_config.h"
-
-extern mbuf_t in_gre_input(mbuf_t m ,int hlen);
+extern mbuf_t in_gre_input(mbuf_t m, int hlen);
 extern mbuf_t in_mobile_input(mbuf_t m, int hlen);
 
 #endif

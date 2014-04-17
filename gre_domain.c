@@ -7,6 +7,8 @@
  *
  */
 
+#if 0
+
 #include <sys/systm.h>
 #include <sys/sysctl.h>
 #include <sys/socket.h>
@@ -270,3 +272,5 @@ int	gre_proto_ioctl(struct socket *so, u_long cmd, caddr_t data, struct ifnet *i
 #endif
     return 0;
 }
+
+#endif

@@ -59,8 +59,6 @@
 
 #include "gre_if.h"
 #include "gre_hash.h"
-#include "protosw.h"
-#include "in_gre.h"
 
 
 extern u_int16_t in_cksum(mbuf_t m, int len);
@@ -77,9 +75,7 @@ gre_lookup(mbuf_t m, u_int8_t proto)
 
     // up and running
     if (sc) {
-        if ((ifnet_flags(sc->sc_ifp) & (IFF_UP | IFF_RUNNING)) == (IFF_UP | IFF_RUNNING))
-            return sc;
-        else {
+        if ((ifnet_flags(sc->sc_ifp) & (IFF_UP | IFF_RUNNING)) != (IFF_UP | IFF_RUNNING)) {
             gre_sc_release(sc);
             sc = NULL;
 #ifdef DEBUG
@@ -97,12 +93,12 @@ gre_lookup(mbuf_t m, u_int8_t proto)
  * yet processed, and NULL if it needs no further processing.
  * proto is the protocol number of the "calling" foo_input() routine.
  */
-mbuf_t in_gre_input(mbuf_t m ,int hlen)
+mbuf_t in_gre_input(mbuf_t m, int hlen)
 {
     struct greip *gip;
     struct gre_softc *sc;
     u_int16_t   flags;
-    static u_int32_t   af;
+    //static u_int32_t   af;
     //u_int8_t    proto;
     
     //proto = ((struct ip *)mbuf_data(m))->ip_p;
@@ -145,10 +141,10 @@ mbuf_t in_gre_input(mbuf_t m ,int hlen)
                         hlen += 4;
                     /* FALLTHROUGH */
                 case ETHERTYPE_IP:
-                    af = AF_INET;
+                    //af = AF_INET;
                     break;
                 case ETHERTYPE_IPV6:
-                    af = AF_INET6;
+                    //af = AF_INET6;
                     break;
                 //case ETHERTYPE_AT:
                 //    af = AF_APPLETALK;
@@ -172,7 +168,8 @@ mbuf_t in_gre_input(mbuf_t m ,int hlen)
     mbuf_adj(m, hlen);
     
     mbuf_pkthdr_setrcvif(m, sc->sc_ifp);
-    mbuf_pkthdr_setheader(m, &af); /* it's ugly... */
+    mbuf_pkthdr_setheader(m, NULL);
+    //mbuf_pkthdr_setheader(m, &af); /* it's ugly... */
     
     struct ifnet_stat_increment_param incs;
     bzero(&incs, sizeof(incs));

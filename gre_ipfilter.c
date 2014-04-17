@@ -21,14 +21,16 @@
 #include <netinet/kpi_ipfilter.h>
 
 #include "gre_if.h"  //IPPROTO_MOBILE
-#include "gre_ipfilter.h"
 #include "in_gre.h"
-#include "gre_config.h"
+
 
 extern lck_grp_t *gre_lck_grp;
 
 static lck_mtx_t *gre_ipf_mtx = NULL;
 static ipfilter_t gre_ipv4filter = NULL;
+
+errno_t gre_ipfilter_attach();
+errno_t gre_ipfilter_detach();
 
 static errno_t ipv4_infilter(void *cookie, mbuf_t *m, int offset, u_int8_t protocol);
 static void ipv4_if_detach(void *cookie);
@@ -185,7 +187,7 @@ static errno_t ipv4_infilter(void *cookie, mbuf_t *m, int offset, u_int8_t proto
 #ifdef DEBUG
             printf("%s: got packet\n", __FUNCTION__);
 #endif
-            mbuf_t m0 = in_gre_input(*m ,offset);
+            mbuf_t m0 = in_gre_input(*m, offset);
             if (m0 == NULL) /* has been processed */
                 return EJUSTRETURN;
             else
@@ -198,7 +200,7 @@ static errno_t ipv4_infilter(void *cookie, mbuf_t *m, int offset, u_int8_t proto
 #ifdef DEBUG
             printf("%s: got packet\n", __FUNCTION__);
 #endif
-            mbuf_t m0 = in_mobile_input(*m ,offset);
+            mbuf_t m0 = in_mobile_input(*m, offset);
             if (m0 == NULL) /* has been processed */
                 return EJUSTRETURN;
             else

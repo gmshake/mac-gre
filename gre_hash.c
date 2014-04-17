@@ -36,9 +36,9 @@ static struct gre_softc *gre_hash_slot[SLOT_CNT];
 static inline uint32_t gre_hash(uint32_t k0, uint32_t k1, uint32_t k2)
 {
 #define BIGPRIME 1783256291
-    register uint32_t hash = BIGPRIME ^ k2;
+    register uint32_t hash = BIGPRIME ^ k1;
     hash ^=   ((hash <<  7) ^ k0 ^ (hash >> 3));
-    hash ^= (~((hash << 11) ^ k1 ^ (hash >> 5)));
+    hash ^= (~((hash << 11) ^ k2 ^ (hash >> 5)));
     hash ^= hash >> 16;
     return hash;
 #undef BIGPRIME
@@ -121,6 +121,8 @@ void gre_hash_dispose()
                 gre_sc_release(sc_old);
                 
             } while (sc != NULL);
+
+            gre_hash_slot[i] = NULL;
         }
     }
     lck_rw_unlock_exclusive(gre_slot_lck);
@@ -151,7 +153,7 @@ errno_t gre_hash_add(struct gre_softc *sc)
                              ((struct sockaddr_in *)&sc->gre_pdst)->sin_addr.s_addr, \
                              sc->encap_proto) & (SLOT_CNT - 1);
 #ifdef DEBUG
-    printf("%s: slot: %u\n", __FUNCTION__, slot);
+    printf("%s: slot -> %u\n", __FUNCTION__, slot);
 #endif
     lck_rw_lock_exclusive(gre_slot_lck);
     
@@ -204,7 +206,7 @@ errno_t gre_hash_delete(struct gre_softc *sc)
                              ((struct sockaddr_in *)&sc->gre_pdst)->sin_addr.s_addr, \
                              sc->encap_proto) & (SLOT_CNT - 1);
 #ifdef DEBUG
-    printf("%s: slot: %u\n", __FUNCTION__, slot);
+    printf("%s: slot -> %u\n", __FUNCTION__, slot);
 #endif
     
     lck_rw_lock_exclusive(gre_slot_lck);
@@ -262,7 +264,7 @@ struct gre_softc * gre_hash_find(struct in_addr src, struct in_addr dst, u_int8_
 {
     uint32_t slot = gre_hash(src.s_addr, dst.s_addr, proto) & (SLOT_CNT - 1);
 #ifdef DEBUG
-    printf("%s: slot: %u\n", __FUNCTION__, slot);
+    printf("%s: slot -> %u\n", __FUNCTION__, slot);
 #endif
     lck_rw_lock_shared(gre_slot_lck);
     struct gre_softc *sc = gre_hash_slot[slot];

@@ -92,7 +92,6 @@
 #define MAX_LINKHDR (ETHER_HDR_LEN + 2)
 
 
-extern ipfilter_t gre_ipfilter;
 extern lck_grp_t *gre_lck_grp;
 
 
@@ -120,7 +119,8 @@ static unsigned int ngre = 0;       /* number of interfaces */
 
 static u_int8_t gre_proto_status = 0;
 
-static ifnet_family_t gre_if_family = 0;
+// hack: default gre_if_family
+static ifnet_family_t gre_if_family = IFNET_FAMILY_TUN;
 
 /*
  * This var controls the default upper limitation on nesting of gre tunnels.
@@ -133,25 +133,30 @@ static ifnet_family_t gre_if_family = 0;
 
 static unsigned int max_gre_nesting = 1;
 
-
-SYSCTL_DECL(_net_gre);
+SYSCTL_NODE(_net, OID_AUTO, gre, CTLFLAG_RW | CTLFLAG_LOCKED, 0, "Generic Routing Encapsulation");
 SYSCTL_UINT(_net_gre, OID_AUTO, maxnesting, CTLTYPE_INT | CTLFLAG_RW, &max_gre_nesting, 0, "Max nested tunnels");
-//SYSCTL_UINT(net_link_gre, OID_AUTO, maxnesting, CTLTYPE_INT | CTLFLAG_RW, &max_gre_nesting, 0, "Max nested tunnels");
+
+//SYSCTL_DECL(_net_link);
+//SYSCTL_NODE(_net_link, OID_AUTO, gre, CTLFLAG_RW | CTLFLAG_LOCKED, 0, "Generic Routing Encapsulation");
+//SYSCTL_UINT(_net_link_gre, OID_AUTO, maxnesting, CTLTYPE_INT | CTLFLAG_RW, &max_gre_nesting, 0, "Max nested tunnels");
 
 
 /* register INET, INET6 adn APPLETALK protocol families */
 int gre_proto_register() {
 #ifdef DEBUG
-    printf("%s(%d) ...\n", __FUNCTION__, __LINE__);
+    printf("%s ...\n", __FUNCTION__);
 #endif
 
     int err;
 
     err = mbuf_tag_id_find(GRE_CONTROL_NAME, &gre_if_family);
 	if (err != 0) {
-		printf("%s: mbuf_tag_id_find_internal failed: %d\n", __FUNCTION__, err);
+		printf("%s: mbuf_tag_id_find failed: %d\n", __FUNCTION__, err);
 		return err;
-	}
+	} else if ((gre_if_family & 0xffff) != gre_if_family) {
+        printf("%s: gre_if_family overflow: %d\n", __FUNCTION__, gre_if_family);
+        return ENOENT;
+    }
 
     if (! (gre_proto_status & AF_INET_PRESENT)) {
         err = proto_register_plumber(PF_INET, gre_if_family, gre_attach_proto_family, gre_detach_proto_family);
@@ -251,10 +256,7 @@ int gre_if_init()
     TAILQ_INIT(&gre_softc_list);
     lck_rw_unlock_exclusive(gre_lck);
 
-
-    /* add first gre interface */
-    gre_if_attach();
-
+    sysctl_register_oid(&sysctl__net_gre);
     sysctl_register_oid(&sysctl__net_gre_maxnesting);
 
 success:
@@ -285,6 +287,7 @@ int gre_if_dispose()
     }
 
     sysctl_unregister_oid(&sysctl__net_gre_maxnesting);
+    sysctl_unregister_oid(&sysctl__net_gre);
 
     struct gre_softc *sc, *tp_sc;
 
@@ -379,18 +382,25 @@ static void gre_sc_free(struct gre_softc *sc) {
     }
     
     // detach protocols when detaching interface, just in case not done ... 
-    if (sc->proto_flag & AF_APPLETALK_PRESENT)
+    if (sc->proto_flag & AF_APPLETALK_PRESENT) {
+        printf("%s: %s%d AF_APPLETALK_PRESENT\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp));
         gre_detach_proto_family(ifp, AF_APPLETALK);
-    if (sc->proto_flag & AF_INET6_PRESENT)
+    }
+    if (sc->proto_flag & AF_INET6_PRESENT) {
+        printf("%s: %s%d AF_INET6_PRESENT\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp));
         gre_detach_proto_family(ifp, AF_INET6);
-    if (sc->proto_flag & AF_INET_PRESENT)
+    }
+    if (sc->proto_flag & AF_INET_PRESENT) {
+        printf("%s: %s%d AF_INET_PRESENT\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp));
         gre_detach_proto_family(ifp, AF_INET);
-    
+    }
+
     gre_sc_lock(sc);
     sc->is_detaching = 1;
     gre_sc_unlock(sc);
     err = ifnet_detach(ifp);
 	if (err) { // maybe it has already been detached
+        printf("%s: ifnet_detach %s%d error: %d\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp), err);
         gre_sc_lock(sc);
 		sc->is_detaching = 0;
         gre_sc_unlock(sc);
@@ -475,7 +485,7 @@ static struct gre_softc * gre_sc_allocate() {
 	init.name = GRENAME;
 	init.unit = unit;
 	init.type = IFT_OTHER;
-	init.family = IFNET_FAMILY_TUN;
+	init.family = gre_if_family;
 	init.output = gre_output;
 	init.demux = gre_demux;
 	init.add_proto = gre_add_proto;
@@ -1186,8 +1196,8 @@ recompute:
 #ifdef DEBUG
             printf("\t Unkown ioctl flag:IN_OUT: 0x%lx \t num: %ld \n", cmd & (IOC_INOUT | IOC_VOID), cmd & 0xff);
 #endif
-//            error = EINVAL;
-            error = ENOTSUP;
+            error = EINVAL;
+//            error = ENOTSUP;
             break;
 	}
 	return error;
@@ -1249,7 +1259,10 @@ static void gre_if_free(ifnet_t ifp)
  */
 static errno_t
 gre_demux(ifnet_t ifp, mbuf_t m, char *frame_header, protocol_family_t *protocol)
-{    
+{
+#ifdef DEBUG
+    printf("%s: %s%d, %p, %p, %p\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp), m, frame_header, protocol);
+#endif
     if (frame_header) {
         /*
         switch (*(u_int32_t *)frame_header) {
@@ -1270,7 +1283,8 @@ gre_demux(ifnet_t ifp, mbuf_t m, char *frame_header, protocol_family_t *protocol
                 return ENOENT;
         } */
         *protocol = *(u_int32_t *)frame_header; /* is this safe ??? */
-        
+
+
     } else {/* we check ip header by ourselves */
         struct ip *iphdr = mbuf_data(m);
         switch (iphdr->ip_v) {
@@ -1287,7 +1301,11 @@ gre_demux(ifnet_t ifp, mbuf_t m, char *frame_header, protocol_family_t *protocol
                 return ENOENT;
         }
     }
-    
+
+#ifdef DEBUG
+    printf("%s: protocol -> %d\n", __FUNCTION__, *protocol);
+#endif
+
     return 0;
 }
 
