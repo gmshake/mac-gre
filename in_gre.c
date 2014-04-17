@@ -62,45 +62,34 @@
 #include "protosw.h"
 #include "in_gre.h"
 
-#if PROTO_WITH_GRE
-extern lck_mtx_t *inet_domain_mutex;
-extern struct protosw *old_pr_gre;
-#endif
 
 extern u_int16_t in_cksum(mbuf_t m, int len);
 
+
 /*
- * De-encapsulate a packet and feed it back through ip input (this
- * routine is called whenever IP gets a packet with proto type
- * IPPROTO_GRE and a local destination address).
- * This really is simple
+ * Find the gre interface associated with our src/dst/proto set.
  */
-#if PROTO_WITH_GRE
-void in_gre_input(mbuf_t m, int off)
+static inline struct gre_softc *
+gre_lookup(mbuf_t m, u_int8_t proto)
 {
+    struct ip *ip = mbuf_data(m);
+    struct gre_softc *sc = gre_hash_find(ip->ip_dst, ip->ip_src, proto);
+
+    // up and running
+    if (sc) {
+        if ((ifnet_flags(sc->sc_ifp) & (IFF_UP | IFF_RUNNING)) == (IFF_UP | IFF_RUNNING))
+            return sc;
+        else {
+            gre_sc_release(sc);
+            sc = NULL;
 #ifdef DEBUG
-    printf("%s: got packet\n", __FUNCTION__);
+            printf("%s: found gre_softc but interface is down", __FUNCTION__);
 #endif
-    m = in_gre_input2(m, off);
-    
-    if (m == NULL)
-        return;
-    /*
-     * If no matching tunnel that is up is found. We inject
-     * the mbuf to raw ip socket to see if anyone picks it up.
-     */
-    
-    // the packet was not for us, just call the old hook
-	
-	if (!((*old_pr_gre).pr_flags & PR_PROTOLOCK)) {
-		lck_mtx_lock(inet_domain_mutex);
-		(*old_pr_gre).pr_input(m, off);
-		lck_mtx_unlock(inet_domain_mutex);
-	} else
-		(*old_pr_gre).pr_input(m, off);
-    
+        }
+    }
+
+    return sc;
 }
-#endif
 
 /*
  * Decapsulate. Does the real work and is called from in_gre_input()
@@ -108,17 +97,17 @@ void in_gre_input(mbuf_t m, int off)
  * yet processed, and NULL if it needs no further processing.
  * proto is the protocol number of the "calling" foo_input() routine.
  */
-inline mbuf_t in_gre_input2(mbuf_t m ,int hlen)
+mbuf_t in_gre_input(mbuf_t m ,int hlen)
 {
     struct greip *gip;
     struct gre_softc *sc;
     u_int16_t   flags;
     static u_int32_t   af;
-    u_int8_t    proto;
+    //u_int8_t    proto;
     
-    proto = ((struct ip *)mbuf_data(m))->ip_p;
+    //proto = ((struct ip *)mbuf_data(m))->ip_p;
     
-    if ((sc = gre_lookup(m, proto)) == NULL) {
+    if ((sc = gre_lookup(m, IPPROTO_GRE)) == NULL) {
         /* No matching tunnel or tunnel is down. */
         return m;
     }
@@ -132,8 +121,8 @@ inline mbuf_t in_gre_input2(mbuf_t m ,int hlen)
     }
     gip = mbuf_data(m);
     
-    switch (proto) {
-        case IPPROTO_GRE:
+    //switch (proto) {
+    //    case IPPROTO_GRE:
             hlen += sizeof(struct gre_h);
             
             /* process GRE flags as packet can be of variable len */
@@ -168,11 +157,11 @@ inline mbuf_t in_gre_input2(mbuf_t m ,int hlen)
                     /* Others not yet supported. */
                     goto done;
             }
-            break;
-        default:
+    //        break;
+    //    default:
             /* Others not yet supported. */
-            goto done;
-    }
+    //        goto done;
+    //}
     
     if (hlen > mbuf_pkthdr_len(m)) { /* not a valid GRE packet */
         mbuf_freem(m);
@@ -191,12 +180,12 @@ inline mbuf_t in_gre_input2(mbuf_t m ,int hlen)
 	incs.bytes_in = mbuf_pkthdr_len(m);
     
     ifnet_input(sc->sc_ifp, m, &incs);
+    
     m = NULL; /* ifnet_input() has freed the mbuf */
 
 done:
     /* since we got sc->sc_refcnt add by one, we decrease it when done */
-    ifnet_release(sc->sc_ifp);
-    gre_release(sc);
+    gre_sc_release(sc);
     return m;
 }
 
@@ -206,7 +195,7 @@ done:
  * encapsulating header was not prepended, but instead inserted
  * between IP header and payload
  */
-void gre_mobile_input(mbuf_t m, int hlen)
+mbuf_t in_mobile_input(mbuf_t m, int hlen)
 {
 #ifdef DEBUG
     printf("%s: got packet\n", __FUNCTION__);
@@ -218,8 +207,7 @@ void gre_mobile_input(mbuf_t m, int hlen)
     
     if ((sc = gre_lookup(m, IPPROTO_MOBILE)) == NULL) {
         /* No matching tunnel or tunnel is down. */
-        mbuf_freem(m);
-        return;
+        return m;
     }
     
     /* from here on, we increased the sc->sc_refcnt, so do remember to decrease it before return */
@@ -251,6 +239,7 @@ void gre_mobile_input(mbuf_t m, int hlen)
     
     if (gre_in_cksum((u_int16_t *)&mip->mh, msiz) != 0) {
         mbuf_freem(m);
+        m = NULL;
         goto done;
     }
     
@@ -278,20 +267,15 @@ void gre_mobile_input(mbuf_t m, int hlen)
     bzero(&incs, sizeof(incs));
     incs.packets_in = 1;
 	incs.bytes_in = mbuf_pkthdr_len(m);
+
     ifnet_input(sc->sc_ifp, m, &incs);
-    
+
+    m = NULL; /* ifnet_input() has freed the mbuf */
+
 done:
     /* since we got sc->sc_refcnt add by one, we decrease it when done */
-    ifnet_release(sc->sc_ifp);
-    gre_release(sc);
+    gre_sc_release(sc);
+    return m;
 }
 
-/*
- * Find the gre interface associated with our src/dst/proto set.
- */
-inline struct gre_softc *
-gre_lookup(mbuf_t m, u_int8_t proto)
-{
-    struct ip *ip = mbuf_data(m);
-    return gre_hash_find(ip->ip_dst, ip->ip_src, proto);
-}
+

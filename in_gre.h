@@ -50,11 +50,7 @@
 
 #include "gre_config.h"
 
-extern struct gre_softc * gre_lookup(mbuf_t m, u_int8_t proto);
-#if PROTO_WITH_GRE
-extern void in_gre_input(mbuf_t m, int off);
-#endif
-extern mbuf_t in_gre_input2(mbuf_t m ,int hlen);
-extern void gre_mobile_input(mbuf_t m, int hlen);
+extern mbuf_t in_gre_input(mbuf_t m ,int hlen);
+extern mbuf_t in_mobile_input(mbuf_t m, int hlen);
 
 #endif

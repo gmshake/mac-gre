@@ -20,10 +20,6 @@
 #include <netinet/ip6.h>
 #include <netinet/kpi_ipfilter.h>
 
-#if CONFIG_MACF_NET
-#include <security/mac_framework.h>
-#endif
-
 #include "gre_if.h"  //IPPROTO_MOBILE
 #include "gre_ipfilter.h"
 #include "in_gre.h"
@@ -148,23 +144,17 @@ errno_t gre_ipfilter_detach()
 #endif
     errno_t err = 0;
     
-    lck_mtx_lock(gre_ipf_mtx);
-    if (gre_ipv4filter) {
-        lck_mtx_unlock(gre_ipf_mtx);
-
-        err = ipf_remove(gre_ipv4filter);
-        if (err == 0) {
-            lck_mtx_lock(gre_ipf_mtx);
-            if (gre_ipv4filter) {
-                /* wait for the detach process */
-                msleep(&gre_ipv4filter, gre_ipf_mtx, PDROP, NULL, NULL);
-            } else {
-                lck_mtx_unlock(gre_ipf_mtx);
-            }
+    err = ipf_remove(gre_ipv4filter);
+    if (err == 0) {
+        lck_mtx_lock(gre_ipf_mtx);
+        if (gre_ipv4filter) {
+            /* wait for the detach process */
+            msleep(&gre_ipv4filter, gre_ipf_mtx, PDROP, NULL, NULL);
+        } else {
+            lck_mtx_unlock(gre_ipf_mtx);
         }
-    } else {
-        lck_mtx_unlock(gre_ipf_mtx);
     }
+
 #ifdef DEBUG
     printf("%s: done\n", __FUNCTION__);
 #endif
@@ -192,23 +182,29 @@ static errno_t ipv4_infilter(void *cookie, mbuf_t *m, int offset, u_int8_t proto
     switch (protocol) {
         case IPPROTO_GRE:
         {
-#if !(PROTO_WITH_GRE)
 #ifdef DEBUG
             printf("%s: got packet\n", __FUNCTION__);
 #endif
-            mbuf_t m0 = in_gre_input2(*m ,offset);
+            mbuf_t m0 = in_gre_input(*m ,offset);
             if (m0 == NULL) /* has been processed */
                 return EJUSTRETURN;
             else
                 *m = m0;
-#endif
+
             break;
         }
         case IPPROTO_MOBILE:
+        {
 #ifdef DEBUG
-            printf("%s: IPPROTO_MOBILE will be processed by ip_protox[IPPROTO_MOBILE]\n", __FUNCTION__);
+            printf("%s: got packet\n", __FUNCTION__);
 #endif
+            mbuf_t m0 = in_mobile_input(*m ,offset);
+            if (m0 == NULL) /* has been processed */
+                return EJUSTRETURN;
+            else
+                *m = m0;
             break;
+        }
         default:
             break;
     }

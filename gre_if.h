@@ -52,7 +52,7 @@
 
 #include "gre_config.h"
 
-extern lck_rw_t *gre_lck;
+#define GRE_CONTROL_NAME "org.gmshake.nke.gre_control"
 
 /*
  * Version of the WCCP, need to be configured manually since
@@ -226,12 +226,12 @@ struct mobip_h {
 #define sintosa(sin)    ((struct sockaddr *)(sin))
 #endif
 
-extern errno_t gre_reference(struct gre_softc *sc);
-extern errno_t gre_release(struct gre_softc *sc);
-extern errno_t gre_release_n(struct gre_softc *sc, int cnt);
-extern int gre_init();
-extern int gre_dispose();
-extern int gre_attach();
+extern void gre_sc_reference(struct gre_softc *sc);
+extern void gre_sc_release(struct gre_softc *sc);
+
+extern int gre_if_init();
+extern int gre_if_dispose();
+extern int gre_if_attach();
 extern u_int16_t    gre_in_cksum(u_int16_t *p, u_int len);
 extern errno_t      gre_attach_proto_family(ifnet_t ifp, protocol_family_t protocol);
 extern void         gre_detach_proto_family(ifnet_t ifp, protocol_family_t protocol);

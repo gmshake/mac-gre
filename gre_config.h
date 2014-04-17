@@ -25,7 +25,7 @@
 
 #define PROTO_WITH_MOBILE 0
 
-#define MACOSX_10_9 1
+#define MACOSX_10_9 0
 
 /*
  * as ipf_output() would send our packet to the wrong interface when tunnel

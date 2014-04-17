@@ -91,14 +91,10 @@
 /* link layer header, ETHER_HDR_LEN + overhead, default is 16 in xnu1228 */
 #define MAX_LINKHDR (ETHER_HDR_LEN + 2)
 
-TAILQ_HEAD(gre_softc_head, gre_softc) gre_softc_list;
-unsigned int ngre = 0;       /* number of interfaces */
 
 extern ipfilter_t gre_ipfilter;
 extern lck_grp_t *gre_lck_grp;
-lck_rw_t *gre_lck = NULL; // protect gre_softc_list and ngre
 
-static errno_t  gre_detach(ifnet_t ifp);
 
 static errno_t  gre_add_proto(ifnet_t ifp, protocol_family_t protocol, const struct ifnet_demux_desc *demux_array, u_int32_t demux_count);
 static errno_t  gre_del_proto(ifnet_t ifp, protocol_family_t protocol);
@@ -116,33 +112,121 @@ static errno_t  gre_output(ifnet_t ifp, mbuf_t m);
 
 static u_int16_t ip_randomid();
 
-#if USE_IP_OUTPUT
-static int gre_compute_route(struct gre_softc *sc);
-#endif
+// vars
+static lck_rw_t *gre_lck = NULL; // protect gre_softc_list
+
+static TAILQ_HEAD(gre_softc_head, gre_softc) gre_softc_list;
+static unsigned int ngre = 0;       /* number of interfaces */
+
+static u_int8_t gre_proto_status = 0;
+
+static ifnet_family_t gre_if_family = 0;
 
 /*
- * This macro controls the default upper limitation on nesting of gre tunnels.
+ * This var controls the default upper limitation on nesting of gre tunnels.
  * Since, setting a large value to this macro with a careless configuration
  * may introduce system crash, we don't allow any nestings by default.
  * If you need to configure nested gre tunnels, you can define this macro
  * in your kernel configuration file.  However, if you do so, please be
  * careful to configure the tunnels so that it won't make a loop.
  */
-#ifndef MAX_GRE_NEST
-#define MAX_GRE_NEST 1
-#endif
 
-static unsigned int max_gre_nesting = MAX_GRE_NEST;
+static unsigned int max_gre_nesting = 1;
 
-#ifdef MAX_GRE_NEST
-#undef MAX_GRE_NEST
-#endif
 
 SYSCTL_DECL(_net_gre);
 SYSCTL_UINT(_net_gre, OID_AUTO, maxnesting, CTLTYPE_INT | CTLFLAG_RW, &max_gre_nesting, 0, "Max nested tunnels");
 //SYSCTL_UINT(net_link_gre, OID_AUTO, maxnesting, CTLTYPE_INT | CTLFLAG_RW, &max_gre_nesting, 0, "Max nested tunnels");
 
-int gre_init()
+
+/* register INET, INET6 adn APPLETALK protocol families */
+int gre_proto_register() {
+#ifdef DEBUG
+    printf("%s(%d) ...\n", __FUNCTION__, __LINE__);
+#endif
+
+    int err;
+
+    err = mbuf_tag_id_find(GRE_CONTROL_NAME, &gre_if_family);
+	if (err != 0) {
+		printf("%s: mbuf_tag_id_find_internal failed: %d\n", __FUNCTION__, err);
+		return err;
+	}
+
+    if (! (gre_proto_status & AF_INET_PRESENT)) {
+        err = proto_register_plumber(PF_INET, gre_if_family, gre_attach_proto_family, gre_detach_proto_family);
+        if (err && err != EEXIST)
+            printf("%s: could not register PF_INET protocol family: %d\n", __FUNCTION__, err);
+        else
+            gre_proto_status |= AF_INET_PRESENT;
+#ifdef DEBUG
+        if (err == EEXIST)
+            printf("%s proto(PF_INET, %d) plumber exist\n", __FUNCTION__, gre_if_family);
+#endif
+    }
+
+    if (! (gre_proto_status & AF_INET6_PRESENT)) {
+        err = proto_register_plumber(PF_INET6, gre_if_family, gre_attach_proto_family, gre_detach_proto_family);
+        if (err && err != EEXIST)
+            printf("%s: could not register PF_INET6 protocol family: %d\n", __FUNCTION__, err);
+        else
+            gre_proto_status |= AF_INET6_PRESENT;
+#ifdef DEBUG
+        if (err == EEXIST)
+            printf("%s proto(PF_INET6, %d) plumber exist\n", __FUNCTION__, gre_if_family);
+#endif
+    }
+
+#if ENABLE_APPLETALK
+    if (! (gre_proto_status & AF_APPLETALK_PRESENT)) {
+        err = proto_register_plumber(PF_APPLETALK, gre_if_family, gre_attach_proto_family, gre_detach_proto_family);
+        if (err && err != EEXIST)
+            printf("%s: could not register PF_APPLETALK protocol family: %d\n", __FUNCTION__, err);
+        else
+            gre_proto_status |= AF_APPLETALK_PRESENT;
+#ifdef DEBUG
+        if (err == EEXIST)
+            printf("%s proto(PF_APPLETALK, %d) plumber exist\n", __FUNCTION__, gre_if_family);
+#endif
+    }
+#endif
+
+#ifdef DEBUG
+    printf("%s: done\n", __FUNCTION__);
+#endif
+    
+    return gre_proto_status == 0 ? -1 : 0;
+}
+
+/* unregister INET, INET6 adn APPLETALK protocol families */
+void gre_proto_unregister() {
+#ifdef DEBUG
+    printf("%s ...\n", __FUNCTION__);
+#endif
+
+#if ENABLE_APPLETALK
+    if (gre_proto_status & AF_APPLETALK_PRESENT) {
+        proto_unregister_plumber(PF_APPLETALK, gre_if_family);
+        gre_proto_status &= AF_APPLETALK_PRESENT;
+    }
+#endif
+
+    if (gre_proto_status & AF_INET6_PRESENT) {
+        proto_unregister_plumber(PF_INET6, gre_if_family);
+        gre_proto_status &= AF_INET6_PRESENT;
+    }
+
+    if (gre_proto_status & AF_INET_PRESENT) {
+        proto_unregister_plumber(PF_INET, gre_if_family);
+        gre_proto_status &= AF_INET_PRESENT;
+    }
+
+#ifdef DEBUG
+    printf("%s: done\n", __FUNCTION__);
+#endif
+}
+
+int gre_if_init()
 {
 #ifdef DEBUG
     printf("%s ...\n", __FUNCTION__);
@@ -163,26 +247,13 @@ int gre_init()
         goto failed;
     }
 
+    lck_rw_lock_exclusive(gre_lck);
     TAILQ_INIT(&gre_softc_list);
+    lck_rw_unlock_exclusive(gre_lck);
 
-    int err;
-    /* register INET, INET6 adn APPLETALK protocol families */
-    err = proto_register_plumber(PF_INET, APPLE_IF_FAM_TUN, gre_attach_proto_family, gre_detach_proto_family);
-    if (err)
-        printf("%s: could not register AF_INET protocol family: %d\n", __FUNCTION__, err);
-
-    err = proto_register_plumber(PF_INET6, APPLE_IF_FAM_TUN, gre_attach_proto_family, gre_detach_proto_family);
-    if (err)
-        printf("%s: could not register AF_INET6 protocol family: %d\n", __FUNCTION__, err);
-
-#if ENABLE_APPLETALK
-    err = proto_register_plumber(PF_APPLETALK, APPLE_IF_FAM_TUN, gre_attach_proto_family, gre_detach_proto_family);
-    if (err)
-        printf("%s: could not register AF_APPLETALK protocol family: %d\n", __FUNCTION__, err);
-#endif
 
     /* add first gre interface */
-    gre_attach();
+    gre_if_attach();
 
     sysctl_register_oid(&sysctl__net_gre_maxnesting);
 
@@ -200,7 +271,7 @@ failed:
 }
 
 
-int gre_dispose()
+int gre_if_dispose()
 {
 #ifdef DEBUG
     printf("%s ...\n", __FUNCTION__);
@@ -215,36 +286,35 @@ int gre_dispose()
 
     sysctl_unregister_oid(&sysctl__net_gre_maxnesting);
 
-    struct gre_softc *sc;
-    TAILQ_FOREACH(sc, &gre_softc_list, sc_list) {
-        gre_detach(sc->sc_ifp);
-    }
+    struct gre_softc *sc, *tp_sc;
 
+    lck_rw_lock_exclusive(gre_lck);
+    
+    TAILQ_FOREACH_SAFE(sc, &gre_softc_list, sc_list, tp_sc) {
+        TAILQ_REMOVE(&gre_softc_list, sc, sc_list);
+        gre_sc_release(sc);
+    }
+    
+    lck_rw_unlock_exclusive(gre_lck);
+    lck_rw_lock_shared(gre_lck);
+    
+    //lck_rw_lock_exclusive_to_shared(gre_lck);
+    
     /* can't dispose if any interface are in use or any resources has not been freed */
     if (!TAILQ_EMPTY(&gre_softc_list)) {
 #ifdef DEBUG
         printf("%s: resouces busy, please try later\n", __FUNCTION__);
 #endif
+        lck_rw_unlock_shared(gre_lck);
         goto busy;
     }
+    lck_rw_unlock_shared(gre_lck);
 
     lck_rw_free(gre_lck, gre_lck_grp);
     gre_lck = NULL;
 
 #ifdef DEBUG
-    printf("%s: starting unregister_plumber ...\n", __FUNCTION__);
-#endif
-
-#if ENABLE_APPLETALK
-    proto_unregister_plumber(PF_APPLETALK, APPLE_IF_FAM_TUN);
-#endif
-
-    proto_unregister_plumber(PF_INET6, APPLE_IF_FAM_TUN);
-
-    proto_unregister_plumber(PF_INET, APPLE_IF_FAM_TUN);
-
-#ifdef DEBUG
-    printf("%s: unregister_plumber done\n", __FUNCTION__);
+    printf("%s: current ngre = %d\n", __FUNCTION__, ngre);
 #endif
 
 success:
@@ -260,59 +330,222 @@ busy:
     return EBUSY;
 }
 
-inline errno_t gre_reference(struct gre_softc *sc)
+
+static inline void gre_sc_lock(struct gre_softc *sc)
+{
+#ifdef DEBUG
+    if (sc == NULL) {
+        // Should panic
+        printf("%s: invalid parameters: sc = %p, should panic!!!\n", __FUNCTION__, sc);
+        return;
+    }
+#endif
+    lck_mtx_lock(sc->mtx);
+}
+
+static inline void gre_sc_unlock(struct gre_softc *sc)
+{
+#ifdef DEBUG
+    if (sc == NULL) {
+        // Should panic
+        printf("%s: invalid parameters: sc = %p, should panic!!!\n", __FUNCTION__, sc);
+        return;
+    }
+#endif
+    lck_mtx_unlock(sc->mtx);
+}
+
+
+
+static void gre_sc_free(struct gre_softc *sc) {
+#ifdef DEBUG
+    printf("%s ...\n", __FUNCTION__);
+
+    if (sc == NULL || sc->sc_ifp == NULL) {
+        // Should panic
+        printf("%s: invalid parameters: sc = %p, sc->sc_ifp = %p, should panic!!!\n", __FUNCTION__, sc, sc == NULL ? NULL : sc->sc_ifp);
+        return;
+    }
+#endif
+    
+    ifnet_t ifp = sc->sc_ifp;
+    errno_t err;
+    
+    if (ifnet_flags(ifp) & IFF_UP || ifnet_flags(ifp) & IFF_RUNNING) {
+        err = ifnet_set_flags(ifp, 0, IFF_UP | IFF_RUNNING);
+        if (err) {
+            printf("%s: failed to bring %s%d down:%d, continue, may cause memory leak\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp), err);
+        }
+    }
+    
+    // detach protocols when detaching interface, just in case not done ... 
+    if (sc->proto_flag & AF_APPLETALK_PRESENT)
+        gre_detach_proto_family(ifp, AF_APPLETALK);
+    if (sc->proto_flag & AF_INET6_PRESENT)
+        gre_detach_proto_family(ifp, AF_INET6);
+    if (sc->proto_flag & AF_INET_PRESENT)
+        gre_detach_proto_family(ifp, AF_INET);
+    
+    gre_sc_lock(sc);
+    sc->is_detaching = 1;
+    gre_sc_unlock(sc);
+    err = ifnet_detach(ifp);
+	if (err) { // maybe it has already been detached
+        gre_sc_lock(sc);
+		sc->is_detaching = 0;
+        gre_sc_unlock(sc);
+	} else {
+        gre_sc_lock(sc);
+        if (sc->is_detaching) {
+            /* interface release is in progress, wait for callback */
+#ifdef DEBUG
+            printf("%s: detaching is in progress...\n", __FUNCTION__);
+#endif
+            msleep(ifp, sc->mtx, PDROP, NULL, NULL);  // sc->mtx will be unlocked by msleep
+        } else {
+            gre_sc_unlock(sc);
+        }
+    }
+
+
+    err = ifnet_release(ifp);
+    if (err) {
+        printf("%s: ifnet_release failed: %d, continue, may cause memory leak\n", __FUNCTION__, err);
+    }
+
+    lck_mtx_free(sc->mtx, gre_lck_grp);
+
+	_FREE(sc, M_TEMP);
+
+    OSDecrementAtomic(&ngre);
+
+#ifdef DEBUG
+    printf("%s: done\n", __FUNCTION__);
+#endif
+}
+
+inline void gre_sc_reference(struct gre_softc *sc)
 {
 #ifdef DEBUG
     if (sc == NULL) {
         printf("%s: invalid sc(NULL)\n", __FUNCTION__);
-        return EINVAL;
+        return;
     }
 #endif
     OSIncrementAtomic((SInt32 *)&sc->sc_refcnt);
-    return 0;
 }
 
-inline errno_t gre_release_n(struct gre_softc *sc, int cnt)
+inline void gre_sc_release(struct gre_softc *sc)
 {
 #ifdef DEBUG
-    if (sc == NULL || cnt == 0) {
-        printf("gre_release: invalid parameters: sc = %p, cnt = %d\n", sc, cnt);
-        return EINVAL;
+    if (sc == NULL) {
+        printf("%s: invalid sc(NULL)\n", __FUNCTION__);
+        return;
     }
 #endif
-    int oldval = OSAddAtomic(-(SInt32)cnt, (SInt32*)&sc->sc_refcnt);
-    if (oldval == cnt) {
-        lck_rw_lock_exclusive(gre_lck);
-        if (sc->sc_refcnt == 0) { /* check again */
-            TAILQ_REMOVE(&gre_softc_list, sc, sc_list);
-            lck_mtx_free(sc->mtx, gre_lck_grp);
-            _FREE(sc, M_TEMP);
-#ifdef DEBUG
-            printf("gre_release: softc free done\n");
-#endif
-        }
-        lck_rw_unlock_exclusive(gre_lck);
-    } else if (oldval <= 0) {
-        printf("critical: gre_release - refcount decremented past zero!\n");
-        return -1;
+    int oldval = OSDecrementAtomic((SInt32*)&sc->sc_refcnt);
+    if (oldval == 1) { // now refcnt reach 0, free safely
+        gre_sc_free(sc);
     }
-    return 0;
+
 }
 
-inline errno_t gre_release(struct gre_softc *sc)
-{
-	return gre_release_n(sc, 1);
+
+// allocate an empty gre_softc with an initial sc_refcnt of 1
+static struct gre_softc * gre_sc_allocate() {
+    // if reach max unit number
+    unsigned int unit;
+    if ((unit = OSIncrementAtomic(&ngre)) >= GRE_MAXUNIT) {
+        OSDecrementAtomic(&ngre);
+        return NULL;
+    }
+
+    struct gre_softc * sc = (struct gre_softc *) _MALLOC(sizeof(struct gre_softc), M_TEMP, M_WAITOK | M_ZERO);
+    if (sc == NULL)
+		return NULL;
+
+    sc->mtx = lck_mtx_alloc_init(gre_lck_grp, NULL);
+	if (sc->mtx == NULL) {
+        _FREE(sc, M_TEMP);
+		return NULL;
+	}
+
+    struct ifnet_init_params init;
+    bzero(&init, sizeof(init));
+	init.name = GRENAME;
+	init.unit = unit;
+	init.type = IFT_OTHER;
+	init.family = IFNET_FAMILY_TUN;
+	init.output = gre_output;
+	init.demux = gre_demux;
+	init.add_proto = gre_add_proto;
+	init.del_proto = gre_del_proto;
+    init.framer = gre_framer;
+	init.softc = sc;
+	init.ioctl = gre_ioctl;
+	//init.set_bpf_tap = gre_set_bpf_tap; // deprecated
+    init.detach = gre_if_free;
+
+	errno_t err = ifnet_allocate(&init, &sc->sc_ifp);
+	if (err) {
+        lck_mtx_free(sc->mtx, gre_lck_grp);
+        _FREE(sc, M_TEMP);
+
+		printf("%s: ifnet_allocate() failed - %d\n", __FUNCTION__, err);
+		return NULL;
+	}
+
+    sc->sc_refcnt = 1;
+    sc->called = 0;
+    sc->encap_proto = IPPROTO_GRE;
+    sc->wccp_ver = WCCP_V1;
+    sc->key = 0;
+
+    ifnet_t ifp = sc->sc_ifp;
+
+    ifnet_set_addrlen(ifp, 0);
+    ifnet_set_mtu(ifp, GREMTU);
+    ifnet_set_hdrlen(ifp, sizeof(struct greip)); // IP + GRE
+	ifnet_set_flags(ifp, IFF_POINTOPOINT | IFF_MULTICAST | IFF_LINK0, 0xffff);
+    
+    // reset the status in case as the interface may has been recycled
+    struct ifnet_stats_param param;
+    bzero(&param, sizeof(param));
+    ifnet_set_stat(ifp, &param);
+
+    ifnet_touch_lastchange(ifp);
+
+    err = ifnet_attach(ifp, NULL);
+	if (err) {
+        err = ifnet_release(ifp);
+        if (err) 
+            printf("%s: ifnet_release failed: %d, continue, may cause memory leak\n", __FUNCTION__, err);
+        
+        lck_mtx_free(sc->mtx, gre_lck_grp);
+        _FREE(sc, M_TEMP);
+
+		printf("%s: ifnet_attach() failed - %d\n", __FUNCTION__, err);
+		return NULL;
+	}
+
+#if CONFIG_MACF_NET
+	mac_ifnet_label_init(&sc->sc_ifp);
+#endif
+
+	bpfattach(ifp, DLT_NULL, sizeof(u_int32_t));
+
+    return sc;
 }
+
+
 
 /*
  * gre_attach(), attach a new interface
  * sc->sc_refcnt is increase by 1
  */
-int gre_attach()
+int gre_if_attach()
 {
-    errno_t err = 0;
 	struct gre_softc *sc;
-    struct ifnet_init_params init;
     
     lck_rw_lock_shared(gre_lck);
     /* Check for unused gre interface */
@@ -324,12 +557,8 @@ int gre_attach()
         }
 	}
     
-    if (ngre >= GRE_MAXUNIT) {
-        lck_rw_unlock_shared(gre_lck);
-        return EMFILE; // any better Error code?
-    }
     lck_rw_unlock_shared(gre_lck);
-
+/*
     sc = (struct gre_softc *) _MALLOC(sizeof(struct gre_softc), M_TEMP, M_WAITOK | M_ZERO);
     if (sc == NULL)
 		return ENOMEM;
@@ -352,7 +581,7 @@ int gre_attach()
     init.framer = gre_framer;
 	init.softc = sc;
 	init.ioctl = gre_ioctl;
-	init.set_bpf_tap = gre_set_bpf_tap;
+	//init.set_bpf_tap = gre_set_bpf_tap; // deprecated
     init.detach = gre_if_free;
     
 	err = ifnet_allocate(&init, &sc->sc_ifp);
@@ -364,45 +593,32 @@ int gre_attach()
     sc->sc_refcnt = 0;
     sc->called = 0;
     sc->encap_proto = IPPROTO_GRE;
+    sc->wccp_ver = WCCP_V1;
+    sc->key = 0;
+    
     ifnet_set_addrlen(sc->sc_ifp, 0);
     ifnet_set_mtu(sc->sc_ifp, GREMTU);
     ifnet_set_hdrlen(sc->sc_ifp, sizeof(struct greip)); // IP + GRE
 	ifnet_set_flags(sc->sc_ifp, IFF_POINTOPOINT | IFF_MULTICAST | IFF_LINK0, 0xffff);
-    sc->wccp_ver = WCCP_V1;
-    sc->key = 0;
     
-	ifnet_touch_lastchange(sc->sc_ifp);
+    // reset the status in case as the interface may has been recycled
+    struct ifnet_stats_param param;
+    bzero(&param, sizeof(param));
+    ifnet_set_stat(sc->sc_ifp, &param);
+*/
+    sc = gre_sc_allocate();
+    if (sc == NULL)
+		return ENOMEM;
     
-    err = ifnet_attach(sc->sc_ifp, NULL);
-	if (err) {
-		printf("%s: ifnet_attach() failed - %d\n", __FUNCTION__, err);
-		goto error;
-	}
-#if CONFIG_MACF_NET
-	mac_ifnet_label_init(&sc->sc_ifp);
-#endif
-    
-	bpfattach(sc->sc_ifp, DLT_NULL, sizeof(u_int32_t));
-    
-    gre_reference(sc); /* sc->refcnt == 1, indicates that sc is in sc_list */
     lck_rw_lock_exclusive(gre_lck);
     TAILQ_INSERT_TAIL(&gre_softc_list, sc, sc_list);
-    ++ngre;
     lck_rw_unlock_exclusive(gre_lck);
     
 	return 0;
-    
-error:
-    if (sc->sc_ifp)
-        ifnet_release(sc->sc_ifp);
-	if (sc->mtx)
-		lck_mtx_free(sc->mtx, gre_lck_grp);
-
-	_FREE(sc, M_TEMP);
-    return err;
 }
 
 
+#if 0
 /*
  * gre_detach(), detach a interface
  */
@@ -455,8 +671,6 @@ static errno_t gre_detach(ifnet_t ifp)
             lck_mtx_unlock(sc->mtx);
         }
     }
-    ifnet_release(ifp);
-    sc->sc_ifp = NULL;
 
 #if USE_IP_OUTPUT
     /* Release the route */
@@ -470,15 +684,15 @@ static errno_t gre_detach(ifnet_t ifp)
     }
 #endif
 #endif
-    lck_rw_lock_exclusive(gre_lck);
-    --ngre;
-    lck_rw_unlock_exclusive(gre_lck);
+
+    //gre_sc_release(sc);
     
-    gre_release(sc);
+    OSDecrementAtomic(&ngre);
     
 done:
     return ret;
 }
+#endif
 
 
 /* attach inet/inet6 to a GRE interface through DLIL */
@@ -489,16 +703,21 @@ errno_t gre_attach_proto_family(ifnet_t ifp, protocol_family_t protocol_family)
 #endif
     struct ifnet_attach_proto_param	proto;
     errno_t err;
-    
+
 	bzero(&proto, sizeof(proto));
     proto.input = gre_input;
     proto.pre_output = gre_pre_output;
-    
+
     err = ifnet_attach_protocol(ifp, protocol_family, &proto);
     if (err && err != EEXIST)
         printf("%s: ifnet_attach_protocol can't attach interface %s%d fam=0x%x\n", \
                __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp),  protocol_family);
+#ifdef DEBUG
+    if (err == EEXIST)
+        printf("%s: ifnet_attach_protocol(), %s%d with proto: 0x%x, error = EEXIST\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp), protocol_family);
     
+    printf("%s: fam=0x%x done\n", __FUNCTION__, protocol_family);
+#endif
     return err;
 }
 
@@ -508,34 +727,19 @@ void gre_detach_proto_family(ifnet_t ifp, protocol_family_t protocol)
 #ifdef DEBUG
     printf("%s: fam=0x%x\n", __FUNCTION__, protocol);
 #endif
-    errno_t err;
-        
-    struct gre_softc *sc = ifnet_softc(ifp);
-    switch (protocol) {
-        case AF_INET:
-            if (! sc->proto_flag & AF_INET_PRESENT)
-                return;
-            break;
-        case AF_INET6:
-            if (! sc->proto_flag & AF_INET6_PRESENT)
-                return;
-            break;
-        case AF_APPLETALK:
-            if (! sc->proto_flag & AF_APPLETALK_PRESENT)
-                return;
-            break;
-        default:
-#ifdef DEBUG
-            printf("%s: unkown proto family 0x%x\n", __FUNCTION__, protocol); // should never happen
-#endif
-            return;
-    }
-    
-    err = ifnet_detach_protocol(ifp, protocol);
+
+    errno_t err = ifnet_detach_protocol(ifp, protocol);
     // error occur when detach protocol
     if (err && err != ENOENT)
         printf("%s: ifnet_detach_protocol() %s%d error = 0x%x\n", \
                __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp), err);
+
+#ifdef DEBUG
+    if (err == ENOENT)
+        printf("%s: ifnet_attach_protocol(), %s%d with proto: 0x%x, error = ENOENT\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp), protocol);
+
+    printf("%s: fam=0x%x done\n", __FUNCTION__, protocol);
+#endif
 }
 
 /*
@@ -635,7 +839,13 @@ gre_ioctl(ifnet_t ifp, unsigned long cmd, void *data)
         case SIOCGLIFADDR: /* get IF addr */
             break;
         case SIOCDIFADDR: /* delete IF addr */
+#ifdef DEBUG
+            printf("%s: SIOCDIFADDR\n", __FUNCTION__);
+#endif
         case SIOCDLIFADDR: /* delete IF addr */
+#ifdef DEBUG
+            printf("%s: SIOCDLIFADDR\n", __FUNCTION__);
+#endif
             break;
         case SIOCDELMULTI:
             if (ifr == NULL) {
@@ -832,7 +1042,7 @@ gre_ioctl(ifnet_t ifp, unsigned long cmd, void *data)
 
             gre_hash_add(sc);
             /* here we ensure there is always one more GRE interface that is available */
-            gre_attach();
+            gre_if_attach();
             
 recompute:
 #if USE_IP_OUTPUT
@@ -849,7 +1059,7 @@ recompute:
              */
             gre_hash_delete(sc);
             bzero(&sc->gre_pdst, sizeof(sc->gre_pdst));
-            bzero(&sc->gre_psrc, sizeof(sc->gre_pdst));
+            bzero(&sc->gre_psrc, sizeof(sc->gre_psrc));
             break;
         case GREGADDRS: // get gre tunnel src address
             bcopy((caddr_t)&sc->gre_psrc, (caddr_t)&ifr->ifr_addr, sc->gre_psrc.sa_len);
@@ -976,7 +1186,8 @@ recompute:
 #ifdef DEBUG
             printf("\t Unkown ioctl flag:IN_OUT: 0x%lx \t num: %ld \n", cmd & (IOC_INOUT | IOC_VOID), cmd & 0xff);
 #endif
-            error = EINVAL;
+//            error = EINVAL;
+            error = ENOTSUP;
             break;
 	}
 	return error;
@@ -1091,11 +1302,11 @@ gre_input(ifnet_t ifp, protocol_family_t protocol, mbuf_t m, __unused char *fram
 #ifdef DEBUG
     printf("%s: protocol: %d\n", __FUNCTION__, protocol);
 #endif    
-    if (((struct gre_softc *)ifnet_softc(ifp))->bpf_input) {
+//    if (((struct gre_softc *)ifnet_softc(ifp))->bpf_input) {
         protocol_family_t bpf_header = protocol;
         bpf_tap_in(ifp, 0, m, &bpf_header, sizeof(bpf_header));
-    }
-    
+//    }
+
     errno_t err = proto_input(protocol, m);
 	if (err) {
         printf("%s: warnning: proto_input() error: 0x%x\n", __FUNCTION__, err);
@@ -1135,17 +1346,17 @@ gre_pre_output(ifnet_t ifp, protocol_family_t protocol, mbuf_t *m,
         default:
             return EAFNOSUPPORT;
     }
-    if ((mbuf_flags(*m) & MBUF_PKTHDR) == 0) {
-        printf("%s: Warning: It is NOT a valid mbuf packet !!!\n", __FUNCTION__); /* should never happen */
-        return EINVAL;
-    }
+//    if ((mbuf_flags(*m) & MBUF_PKTHDR) == 0) {
+//        printf("%s: Warning: It is NOT a valid mbuf packet !!!\n", __FUNCTION__); /* should never happen */
+//        return EINVAL;
+//    }
 #endif
     
-    if (((struct gre_softc *)ifnet_softc(ifp))->bpf_output) {
+//    if (((struct gre_softc *)ifnet_softc(ifp))->bpf_output) {
         /* Need to prepend the address family as a four byte field. */
         protocol_family_t bpf_header = protocol;
         bpf_tap_out(ifp, 0, *m, &bpf_header, sizeof(bpf_header));
-    }
+//    }
 
 #ifdef DEBUG
     printf("%s: done\n", __FUNCTION__);
@@ -1548,5 +1759,11 @@ static int gre_rtdel(ifnet_t ifp, struct rtentry *rt)
 	}
     
 	return (0);
+}
+#endif
+
+#ifdef DEBUG
+unsigned int get_ngre() {
+    return ngre;
 }
 #endif
