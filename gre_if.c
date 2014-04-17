@@ -373,27 +373,13 @@ static void gre_sc_free(struct gre_softc *sc) {
     
     ifnet_t ifp = sc->sc_ifp;
     errno_t err;
-    
-    if (ifnet_flags(ifp) & IFF_UP || ifnet_flags(ifp) & IFF_RUNNING) {
-        err = ifnet_set_flags(ifp, 0, IFF_UP | IFF_RUNNING);
-        if (err) {
-            printf("%s: failed to bring %s%d down:%d, continue, may cause memory leak\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp), err);
-        }
-    }
-    
-    // detach protocols when detaching interface, just in case not done ... 
-    if (sc->proto_flag & AF_APPLETALK_PRESENT) {
-        printf("%s: %s%d AF_APPLETALK_PRESENT\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp));
-        gre_detach_proto_family(ifp, AF_APPLETALK);
-    }
-    if (sc->proto_flag & AF_INET6_PRESENT) {
-        printf("%s: %s%d AF_INET6_PRESENT\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp));
-        gre_detach_proto_family(ifp, AF_INET6);
-    }
-    if (sc->proto_flag & AF_INET_PRESENT) {
-        printf("%s: %s%d AF_INET_PRESENT\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp));
-        gre_detach_proto_family(ifp, AF_INET);
-    }
+
+//    if (ifnet_flags(ifp) & IFF_UP || ifnet_flags(ifp) & IFF_RUNNING) {
+//        err = ifnet_set_flags(ifp, 0, IFF_UP | IFF_RUNNING);
+//        if (err) {
+//            printf("%s: failed to bring %s%d down:%d, continue, may cause memory leak\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp), err);
+//        }
+//    }
 
     gre_sc_lock(sc);
     sc->is_detaching = 1;
@@ -417,6 +403,19 @@ static void gre_sc_free(struct gre_softc *sc) {
         }
     }
 
+    // detach protocols when detaching interface, just in case not done ...
+    if (sc->proto_flag & AF_APPLETALK_PRESENT) {
+        printf("%s: %s%d AF_APPLETALK_PRESENT\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp));
+        gre_detach_proto_family(ifp, AF_APPLETALK);
+    }
+    if (sc->proto_flag & AF_INET6_PRESENT) {
+        printf("%s: %s%d AF_INET6_PRESENT\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp));
+        gre_detach_proto_family(ifp, AF_INET6);
+    }
+    if (sc->proto_flag & AF_INET_PRESENT) {
+        printf("%s: %s%d AF_INET_PRESENT\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp));
+        gre_detach_proto_family(ifp, AF_INET);
+    }
 
     err = ifnet_release(ifp);
     if (err) {
