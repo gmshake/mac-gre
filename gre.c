@@ -109,11 +109,10 @@ kern_return_t gre_stop(kmod_info_t *ki, void *data)
 
     gre_proto_unregister();
 
-
 #ifdef DEBUG
     printf("%s: current ngre = %d\n", __FUNCTION__, get_ngre());
 #endif
-    
+
     lck_grp_free(gre_lck_grp);
     gre_lck_grp = NULL;
 
