@@ -16,9 +16,10 @@
 #include <netinet/ip.h>
 
 #include "gre_if.h"
+#include "gre_hash.h"
 
-#define BITS 10
-/* 1024 should be enough */
+#define BITS 5
+/* 32 should be enough */
 #define SLOT_CNT (1 << BITS)
 
 extern lck_grp_t *gre_lck_grp;
@@ -43,20 +44,6 @@ static inline uint32_t gre_hash(uint32_t k0, uint32_t k1, uint32_t k2)
     return hash;
 #undef BIGPRIME
 }
-/*
-static inline uint32_t gre_hash2(uint32_t k0, uint32_t k1, uint32_t k2)
-{
-    register uint32_t hash = lrotl(k2, BITS);
-    hash ^= k0 ^ k1;
-    //hash ^= hash >> 16;
-    //hash ^= (hash >> 8) ^ (hash >> 16) ^ (hash >> 24);
-    //hash ^= (hash >> 4) ^ (hash >> 8) ^ (hash >> 12) ^ (hash >> 16) ^ (hash >> 20) ^ (hash >> 24) ^ (hash >> 28);
-    
-    hash ^= (hash >> 2) ^ (hash >> 4) ^ (hash >> 6) ^ (hash >> 8) ^ (hash >> 10) ^ \
-        (hash >> 12) ^ (hash >> 14) ^ (hash >> 16) ^ (hash >> 18) ^ (hash >> 20) ^ \
-        (hash >> 22) ^ (hash >> 24) ^ (hash >> 26) ^ (hash >> 28) ^ (hash >> 30);
-    return hash;
-} */
 
 /*
  * gre_hash_init(), init gre softc hash table
@@ -98,6 +85,7 @@ void gre_hash_dispose()
 {
 #ifdef DEBUG
     printf("%s ...\n", __FUNCTION__);
+    int release_count = 0;
 #endif
     if (gre_slot_lck == NULL) {
 #ifdef DEBUG
@@ -106,34 +94,63 @@ void gre_hash_dispose()
         return;
     }
     
-    lck_rw_lock_exclusive(gre_slot_lck);
-    struct gre_softc * sc;
-    int i;
-    for (i = 0; i < SLOT_CNT; i++) {
-        if ((sc = gre_hash_slot[i]) != NULL) {
-            do {
+    gre_hash_lock_exclusive();
+    for (int i = 0; i < SLOT_CNT; i++) {
+        for (struct gre_softc *sc = gre_hash_slot[i]; sc != NULL; ) {
 #ifdef DEBUG
-                printf("%s: found sc = %p, sc->sc_refcnt = %d, sc->pcb_next = %p\n", __FUNCTION__, sc, sc->sc_refcnt, sc->pcb_next);
+            printf("%s: found sc = %p, sc->sc_refcnt = %d, sc->pcb_next = %p\n", __FUNCTION__, sc, sc->sc_refcnt, sc->pcb_next);
+            release_count++;
 #endif
-                struct gre_softc * sc_old = sc;
-                sc = sc->pcb_next;
-
-                gre_sc_release(sc_old);
-                
-            } while (sc != NULL);
-
-            gre_hash_slot[i] = NULL;
+            struct gre_softc * sc1 = sc;
+            sc = sc->pcb_next;
+            
+            sc1->pcb_next = NULL;
+            gre_sc_release(sc1);
         }
+        gre_hash_slot[i] = NULL;
     }
-    lck_rw_unlock_exclusive(gre_slot_lck);
+    gre_hash_unlock_exclusive();
 
     lck_rw_free(gre_slot_lck, gre_lck_grp);
     gre_slot_lck = NULL;
 
 #ifdef DEBUG
-    printf("%s: done\n", __FUNCTION__);
+    printf("%s: done, released %d total\n", __FUNCTION__, release_count);
 #endif
 }
+
+/*
+ * gre_hash_lock_shared()
+ */
+void gre_hash_lock_shared()
+{
+    lck_rw_lock_shared(gre_slot_lck);
+}
+
+/*
+ * gre_hash_unlock_shared()
+ */
+void gre_hash_unlock_shared()
+{
+    lck_rw_unlock_shared(gre_slot_lck);
+}
+
+/*
+ * gre_hash_lock_exclusive()
+ */
+void gre_hash_lock_exclusive()
+{
+    lck_rw_lock_exclusive(gre_slot_lck);
+}
+
+/*
+ * gre_hash_unlock_exclusive()
+ */
+void gre_hash_unlock_exclusive()
+{
+    lck_rw_unlock_exclusive(gre_slot_lck);
+}
+
 
 /*
  * gre_hash_add(), add a gre softc to hash table, we also add refcnt here
@@ -155,33 +172,22 @@ errno_t gre_hash_add(struct gre_softc *sc)
 #ifdef DEBUG
     printf("%s: slot -> %u\n", __FUNCTION__, slot);
 #endif
-    lck_rw_lock_exclusive(gre_slot_lck);
-    
-    struct gre_softc *p = gre_hash_slot[slot];
-    if (p == NULL) {
-        gre_sc_reference(sc); /* here, we increase the ref of sc, indicates that it's in hash table */
-        gre_hash_slot[slot] = sc;
-    } else { // p != NULL
-        do {
-            if (p == sc) {
-                lck_rw_unlock_exclusive(gre_slot_lck);
-#ifdef DEBUG
-                printf("%s: exist\n", __FUNCTION__);
-#endif
-                return EEXIST;
-            } else
-                p = p->pcb_next;
 
-        } while (p);
-        
-        // NOT FOUND
-        gre_sc_reference(sc); /* here, we increase the ref of sc, indicates that it's in hash table */
-        
-        p = gre_hash_slot[slot];
-        gre_hash_slot[slot] = sc;
-        sc->pcb_next = p;
+    for (struct gre_softc *p = gre_hash_slot[slot]; p != NULL; p = p->pcb_next) {
+        if (p == sc) {
+#ifdef DEBUG
+            printf("%s: exist\n", __FUNCTION__);
+#endif
+            return EEXIST;
+        }
     }
-    lck_rw_unlock_exclusive(gre_slot_lck);
+
+    // NOT FOUND
+    gre_sc_reference(sc); /* here, we increase the ref of sc, indicates that it's in hash table */
+
+    sc->pcb_next = gre_hash_slot[slot];
+    gre_hash_slot[slot] = sc;
+
 #ifdef DEBUG
     printf("%s: done\n", __FUNCTION__);
 #endif
@@ -209,56 +215,46 @@ errno_t gre_hash_delete(struct gre_softc *sc)
     printf("%s: slot -> %u\n", __FUNCTION__, slot);
 #endif
     
-    lck_rw_lock_exclusive(gre_slot_lck);
-    if (gre_hash_slot[slot] == NULL)
-        goto notfound;
-    else if (gre_hash_slot[slot] == sc) {
-        gre_hash_slot[slot] = sc->pcb_next;
-        sc->pcb_next = NULL; /* clear sc->pcb_next */
-        
-        gre_sc_release(sc);
-        
-        lck_rw_unlock_exclusive(gre_slot_lck);
-#ifdef DEBUG
-        printf("%s: done\n", __FUNCTION__);
-#endif
-        
-        return 0;
-    } else { //gre_hash_slot[slot] != NULL || sc
+    struct gre_softc *prev = gre_hash_slot[slot];
+    struct gre_softc *p = prev;
     
-        struct gre_softc *p = gre_hash_slot[slot];
-        while (p->pcb_next) {
-            if (p->pcb_next == sc) {
-                p->pcb_next = sc->pcb_next;
-                sc->pcb_next = NULL;
-                
-                gre_sc_release(sc);
-                lck_rw_unlock_exclusive(gre_slot_lck);
+    while (p) {
+        struct gre_softc *next = p->pcb_next;
+        if (p == sc) { // found
+            if (prev == p)
+                gre_hash_slot[slot] = next;
+            else
+                prev->pcb_next = next;
+            
+            sc->pcb_next = NULL;
+            gre_sc_release(sc);
+
 #ifdef DEBUG
-                printf("%s: done\n", __FUNCTION__);
+            printf("%s: done\n", __FUNCTION__);
 #endif
-                return 0;
-            } else
-                p = p->pcb_next;
+            return 0;
         }
+        // next
+        prev = p;
+        p = next;
     }
+    
 notfound:
-    lck_rw_unlock_exclusive(gre_slot_lck);
 #ifdef DEBUG
     printf("%s: not found\n", __FUNCTION__);
 #endif
     return -1;
 }
 
+
 /*
  * gre_hash_find(), find a right gre softc from hash table by supplied parameters
  * @param src,  src address
  * @param dst,  dst address
- * @param key,  key
  * @param proto, which proto, IPPROTO_GRE, IPPROTO_MOBILE...
  * return pointer to softc on success, otherwise return NULL
- * on success, we add reference count of sc && sc->sc_ifp
- * do remember to unref sc->sc_ifp && sc
+ * on success, we add reference count of sc
+ * do remember to unref sc
  */
 struct gre_softc * gre_hash_find(struct in_addr src, struct in_addr dst, u_int8_t proto)
 {
@@ -266,30 +262,23 @@ struct gre_softc * gre_hash_find(struct in_addr src, struct in_addr dst, u_int8_
 #ifdef DEBUG
     printf("%s: slot -> %u\n", __FUNCTION__, slot);
 #endif
-    lck_rw_lock_shared(gre_slot_lck);
-    struct gre_softc *sc = gre_hash_slot[slot];
-    while (sc) {
-
-        if (sc->encap_proto == proto && \
-            in_hosteq(src, ((struct sockaddr_in *)&sc->gre_psrc)->sin_addr) && \
-            in_hosteq(dst, ((struct sockaddr_in *)&sc->gre_pdst)->sin_addr)) {
+    
+    for (struct gre_softc *sc = gre_hash_slot[slot]; sc != NULL; sc = sc->pcb_next) {
+        if (in_hosteq(src, ((struct sockaddr_in *)&sc->gre_psrc)->sin_addr) && \
+            in_hosteq(dst, ((struct sockaddr_in *)&sc->gre_pdst)->sin_addr) && \
+            sc->encap_proto == proto) {
             
             gre_sc_reference(sc);
-
-            lck_rw_unlock_shared(gre_slot_lck);
 
 #ifdef DEBUG
             printf("%s: found\n", __FUNCTION__);
 #endif
-
+            
             return sc;
-        } else {
-            sc = sc->pcb_next;
         }
     }
     
 notfound:
-    lck_rw_unlock_shared(gre_slot_lck);
 #ifdef DEBUG
     printf("%s: not found\n", __FUNCTION__);
 #endif

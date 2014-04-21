@@ -71,7 +71,9 @@ static inline struct gre_softc *
 gre_lookup(mbuf_t m, u_int8_t proto)
 {
     struct ip *ip = mbuf_data(m);
+    gre_hash_lock_shared();
     struct gre_softc *sc = gre_hash_find(ip->ip_dst, ip->ip_src, proto);
+    gre_hash_unlock_shared();
 
     // up and running
     if (sc) {

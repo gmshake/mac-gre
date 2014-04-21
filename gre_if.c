@@ -371,26 +371,6 @@ static inline void gre_sc_unlock(struct gre_softc *sc)
     lck_mtx_unlock(sc->mtx);
 }
 
-#if 0
-static errno_t gre_do_sock_ioctl(sa_family_t af, unsigned long cmd, void* arg) {
-    socket_t sock;
-    errno_t err = sock_socket(af, SOCK_RAW, 0, NULL, NULL, &sock);
-    if (err) {
-        printf("%s: failed to create socket: %d\n", __FUNCTION__, err);
-        return err;
-    }
-
-    /* issue the ioctl */
-    err = sock_ioctl(sock, cmd, arg);
-    if (err) {
-        printf("%s: socket ioctl %lu failed: %d\n", __FUNCTION__, cmd, err);
-    }
-
-    /* get rid of the socket */
-    sock_close(sock);
-    return err;
-}
-#endif
 
 static errno_t gre_remove_address(ifnet_t interface, protocol_family_t protocol, ifaddr_t address, socket_t socket)
 {
@@ -494,7 +474,6 @@ static void gre_sc_free(struct gre_softc *sc) {
 #endif
 
     ifnet_t ifp = sc->sc_ifp;
-    
 
     // mark interface down
     ifnet_set_flags(ifp, 0, IFF_UP | IFF_RUNNING);
@@ -507,9 +486,9 @@ static void gre_sc_free(struct gre_softc *sc) {
     //ifnet_detach_protocol(ifp, PF_INET);
     
 #if ENABLE_APPLETALK
-    gre_detach_proto_family(ifp, AF_APPLETALK);
+    gre_detach_proto_family(ifp, PF_APPLETALK);
 #endif
-    gre_detach_proto_family(ifp, AF_INET6);
+    gre_detach_proto_family(ifp, PF_INET6);
     gre_detach_proto_family(ifp, PF_INET);
 
     gre_sc_lock(sc);
@@ -562,16 +541,13 @@ static void gre_sc_free(struct gre_softc *sc) {
 #if ENABLE_APPLETALK
     if (sc->proto_flag & AF_APPLETALK_PRESENT) {
         printf("%s: WARN %s%d AF_APPLETALK_PRESENT\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp));
-        //gre_detach_proto_family(ifp, AF_APPLETALK);
     }
 #endif
     if (sc->proto_flag & AF_INET6_PRESENT) {
         printf("%s: WARN %s%d AF_INET6_PRESENT\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp));
-        //gre_detach_proto_family(ifp, AF_INET6);
     }
     if (sc->proto_flag & AF_INET_PRESENT) {
         printf("%s: WARN %s%d AF_INET_PRESENT\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp));
-        //gre_detach_proto_family(ifp, AF_INET);
     }
 
     // now it's safe to release
@@ -772,13 +748,13 @@ void gre_detach_proto_family(ifnet_t ifp, protocol_family_t protocol)
 #endif
 
     errno_t err = ifnet_detach_protocol(ifp, protocol);
-    if (err && err != ENOENT)
+    if (err && err != ENOENT && err != ENXIO)
         printf("%s: ifnet_detach_protocol() %s%d error = 0x%x\n", \
                __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp), err);
 
 #ifdef DEBUG
-    if (err == ENOENT)
-        printf("%s: ifnet_attach_protocol(), %s%d with proto: 0x%x, error = ENOENT\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp), protocol);
+    if (err == ENOENT || err == ENXIO)
+        printf("%s: ifnet_attach_protocol(), %s%d with proto: 0x%x, error = %s\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp), protocol, err == ENOENT ? "ENOENT" : "ENXIO");
 
     printf("%s: fam=0x%x done\n", __FUNCTION__, protocol);
 #endif
@@ -798,24 +774,18 @@ gre_add_proto(ifnet_t ifp, protocol_family_t protocol, const struct ifnet_demux_
 #endif
     switch (protocol) {
         case AF_INET:
-            if (sc->proto_flag & AF_INET_PRESENT)
-                return EEXIST;
             sc->proto_flag |= AF_INET_PRESENT;
             break;
         case AF_INET6:
-            if (sc->proto_flag & AF_INET6_PRESENT)
-                return EEXIST;
             sc->proto_flag |= AF_INET6_PRESENT;
             break;
 #if ENABLE_APPLETALK
         case AF_APPLETALK:
-            if (sc->proto_flag & AF_APPLETALK_PRESENT)
-                return EEXIST;
             sc->proto_flag |= AF_APPLETALK_PRESENT;
             break;
 #endif
         default:
-            return EINVAL;	// happen for unknown protocol, or for empty descriptor
+            return ENOPROTOOPT;	// happen for unknown protocol, or for empty descriptor
     }
 #ifdef DEBUG
     printf("%s: add proto 0x%x for %s%d\n", __FUNCTION__, protocol, ifnet_name(ifp), ifnet_unit(ifp));
@@ -871,13 +841,15 @@ gre_ioctl(ifnet_t ifp, unsigned long cmd, void *data)
 #endif
 
 	switch (cmd) {
+/*
         case SIOCSIFADDR:
         case SIOCAIFADDR:
 #ifdef DEBUG
             printf("%s: SIOCSIFADDR %lu \n", __FUNCTION__, cmd & 0xff);
 #endif
-            ifnet_set_flags(ifp, IFF_UP, IFF_UP);
+//            ifnet_set_flags(ifp, IFF_UP, IFF_UP);
             break;
+*/
         case SIOCSIFFLAGS:
         {
 #ifdef DEBUG
@@ -901,12 +873,17 @@ gre_ioctl(ifnet_t ifp, unsigned long cmd, void *data)
             if (newproto != sc->encap_proto) {
                 gre_sc_reference(sc);
                 
+                gre_hash_lock_exclusive();
+                
                 int err = gre_hash_delete(sc);
                 sc->encap_proto = newproto;
                 if (err == 0) // sc is in hash table
                     gre_hash_add(sc);
                 
+                gre_hash_unlock_exclusive();
+                
                 gre_sc_release(sc);
+                
             }
             goto recompute;
         }
@@ -975,10 +952,18 @@ gre_ioctl(ifnet_t ifp, unsigned long cmd, void *data)
             }
             /* hack, if proto changed, then change hash value */
             if (newproto != sc->encap_proto) {
+                gre_sc_reference(sc);
+                
+                gre_hash_lock_exclusive();
+                
                 int err = gre_hash_delete(sc);
                 sc->encap_proto = newproto;
-                if (err == 0)
+                if (err == 0) // sc is in hash table
                     gre_hash_add(sc);
+                
+                gre_hash_unlock_exclusive();
+                
+                gre_sc_release(sc);
             }
             goto recompute;
         }
@@ -1072,20 +1057,24 @@ gre_ioctl(ifnet_t ifp, unsigned long cmd, void *data)
             }
             lck_rw_unlock_shared(gre_lck);
             }
-            
+
+            ifnet_set_flags(ifp, 0, IFF_RUNNING);
+
             gre_sc_reference(sc);
+            gre_hash_lock_exclusive();
             
             gre_hash_delete(sc);
             
             bcopy((caddr_t)src, (caddr_t)&sc->gre_psrc, src->sa_len);
             bcopy((caddr_t)dst, (caddr_t)&sc->gre_pdst, dst->sa_len);
-
-            ifnet_set_flags(ifp, IFF_RUNNING, IFF_RUNNING);
-
+            
             gre_hash_add(sc);
             
+            gre_hash_unlock_exclusive();
             gre_sc_release(sc);
-
+            
+            ifnet_set_flags(ifp, IFF_RUNNING, IFF_RUNNING);
+            
             /* here we ensure there is always one more GRE interface that is available */
             gre_if_attach();
 
@@ -1105,7 +1094,10 @@ recompute:
             /* hack: do remember delete sc from hash first, or gre_hash_delete()
              * can NOT get original information to find it in hash_table
              */
+            gre_hash_lock_exclusive();
             gre_hash_delete(sc);
+            gre_hash_unlock_exclusive();
+            
             bzero(&sc->gre_pdst, sizeof(sc->gre_pdst));
             bzero(&sc->gre_psrc, sizeof(sc->gre_psrc));
             break;
@@ -1385,10 +1377,12 @@ gre_pre_output(ifnet_t ifp, protocol_family_t protocol, mbuf_t *m,
             if (! sc->proto_flag & AF_INET6_PRESENT)
                 return EAFNOSUPPORT;
             break;
+#if ENABLE_APPLETALK
         case AF_APPLETALK:
             if (! sc->proto_flag & AF_APPLETALK_PRESENT)
                 return EAFNOSUPPORT;
             break;
+#endif
         default:
             return EAFNOSUPPORT;
     }
