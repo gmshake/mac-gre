@@ -1505,10 +1505,12 @@ gre_framer(ifnet_t ifp, mbuf_t *mr, const struct sockaddr *dest, __unused const 
                     gre_ip_id = ip_randomid();
                     etype = ETHERTYPE_IPV6;
                     break;
+#if ENABLE_APPLETALK
                 case AF_APPLETALK:
                     gre_ip_id = ip_randomid();
                     //etype = ETHERTYPE_AT;
                     break;
+#endif
                 default:
                     return EAFNOSUPPORT;
             }
@@ -1666,6 +1668,7 @@ gre_in_cksum(u_int16_t *p, u_int len)
 
 /*
  * generate a random ip id
+ * FIXME random is not RANDOM
  */
 static inline u_int16_t ip_randomid()
 {
