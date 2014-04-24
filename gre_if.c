@@ -626,7 +626,7 @@ static struct gre_softc * gre_sc_allocate() {
     init.framer = gre_framer;
 	init.softc = sc;
 	init.ioctl = gre_ioctl;
-	//init.set_bpf_tap = gre_set_bpf_tap; // deprecated
+	init.set_bpf_tap = gre_set_bpf_tap; // deprecated
     init.detach = gre_if_detached;
 
 	errno_t err = ifnet_allocate(&init, &sc->sc_ifp);
@@ -650,7 +650,8 @@ static struct gre_softc * gre_sc_allocate() {
     ifnet_set_mtu(ifp, GREMTU);
     ifnet_set_hdrlen(ifp, sizeof(struct greip)); // IP + GRE
 	ifnet_set_flags(ifp, IFF_POINTOPOINT | IFF_MULTICAST | IFF_LINK0, 0xffff);
-    
+
+
     // reset the status in case as the interface may has been recycled
     struct ifnet_stats_param param;
     bzero(&param, sizeof(param));
@@ -675,7 +676,7 @@ static struct gre_softc * gre_sc_allocate() {
 	mac_ifnet_label_init(&sc->sc_ifp);
 #endif
 
-	bpfattach(ifp, DLT_NULL, sizeof(u_int32_t));
+	bpfattach(ifp, DLT_NULL, 4);
 
     return sc;
 }
@@ -855,6 +856,19 @@ gre_ioctl(ifnet_t ifp, unsigned long cmd, void *data)
 #ifdef DEBUG
             printf("%s: SIOCSIFFLAGS %lu \n", __FUNCTION__, cmd & 0xff);
 #endif
+            /*
+             * HACK: ifnet_set_promiscuous() would call ifnet_ioctl(ifp, 0, SIOCSIFFLAGS, NULL),
+             * YES, SIOCSIFFLAGS with NULL data, causing kernel panic, we check it here.
+             * xnu-1699, xnu-2050, xnu-2422 shipped with this BUG
+             * xnu-1228, xnu-1456 not affected
+             */
+            if (ifr == NULL) {
+#ifdef DEBUG
+                printf("%s: WARN SIOCSIFFLAGS with NULL ifr\n", __FUNCTION__);
+#endif
+                break;
+            }
+
             u_int8_t newproto;
             if ((ifr->ifr_flags & IFF_LINK0)) {
                 newproto = IPPROTO_GRE;
@@ -1219,7 +1233,6 @@ recompute:
 	return error;
 }
 
-#if 0
 /*
  * Why deprecated ???  Call bpf_tap_in/bpf_tap_out
  */
@@ -1227,7 +1240,9 @@ static errno_t
 gre_set_bpf_tap(ifnet_t ifp, bpf_tap_mode mode, bpf_packet_func func)
 {
 	struct gre_softc *sc = ifnet_softc(ifp);
-        
+#ifdef DEBUG
+    printf("%s: set mode: %d, func: %p\n", __FUNCTION__, mode, func);
+#endif
     switch (mode) {
         case BPF_MODE_DISABLED:
             sc->bpf_input = sc->bpf_output = NULL;
@@ -1249,7 +1264,6 @@ gre_set_bpf_tap(ifnet_t ifp, bpf_tap_mode mode, bpf_packet_func func)
 #endif
 	return 0;
 }
-#endif
 
 /*
  * gre_if_free() is called when ifp detaching is done,
@@ -1339,11 +1353,15 @@ gre_input(ifnet_t ifp, protocol_family_t protocol, mbuf_t m, __unused char *fram
 {
 #ifdef DEBUG
     printf("%s: protocol: %d\n", __FUNCTION__, protocol);
-#endif    
-//    if (((struct gre_softc *)ifnet_softc(ifp))->bpf_input) {
+#endif
+
+    if (((struct gre_softc *)ifnet_softc(ifp))->bpf_input) {
+#ifdef DEBUG
+        printf("%s: bpf_tap_in() with protocol: %d\n", __FUNCTION__, protocol);
+#endif
         protocol_family_t bpf_header = protocol;
-        bpf_tap_in(ifp, 0, m, &bpf_header, sizeof(bpf_header));
-//    }
+        bpf_tap_in(ifp, DLT_NULL, m, &bpf_header, sizeof(bpf_header));
+    }
 
     errno_t err = proto_input(protocol, m);
 	if (err) {
@@ -1363,8 +1381,9 @@ gre_pre_output(ifnet_t ifp, protocol_family_t protocol, mbuf_t *m,
                   const struct sockaddr *dest, __unused void *route, __unused char *frame_type, __unused char *link_layer_dest)
 {
     /* our caller dlil_output() will check if protocal exist on ifp by find_attached_proto() */
-#ifdef DEBUG
     struct gre_softc *sc = ifnet_softc(ifp);
+#ifdef DEBUG
+
     if (protocol != dest->sa_family)
         printf("%s: warnning: protocol:%d, dest->sa_family:%d\n", __FUNCTION__, protocol, dest->sa_family);
 
@@ -1391,12 +1410,25 @@ gre_pre_output(ifnet_t ifp, protocol_family_t protocol, mbuf_t *m,
 //        return EINVAL;
 //    }
 #endif
+
+    if ((ifnet_flags(ifp) & (IFF_UP | IFF_RUNNING)) != (IFF_UP | IFF_RUNNING) || \
+        sc->gre_psrc.sa_family == AF_UNSPEC || \
+        sc->gre_pdst.sa_family == AF_UNSPEC) {
+#ifdef DEBUG
+        printf("%s: %s%d is down", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp));
+#endif
+        sc->called = 0;
+        return ENETDOWN;
+	}
     
-//    if (((struct gre_softc *)ifnet_softc(ifp))->bpf_output) {
+    if (sc->bpf_output) {
+#ifdef DEBUG
+        printf("%s: bpf_tap_out() with protocol: %d\n", __FUNCTION__, protocol);
+#endif
         /* Need to prepend the address family as a four byte field. */
         protocol_family_t bpf_header = protocol;
-        bpf_tap_out(ifp, 0, *m, &bpf_header, sizeof(bpf_header));
-//    }
+        bpf_tap_out(ifp, DLT_NULL, *m, &bpf_header, sizeof(bpf_header));
+    }
 
 #ifdef DEBUG
     printf("%s: done\n", __FUNCTION__);
@@ -1571,15 +1603,16 @@ static errno_t gre_output(ifnet_t ifp, mbuf_t m) //, struct sockaddr *dst)
 {
     errno_t err;
     struct gre_softc *sc = ifnet_softc(ifp);
-    if ((ifnet_flags(ifp) & (IFF_UP | IFF_RUNNING)) != (IFF_UP | IFF_RUNNING) || \
-        sc->gre_psrc.sa_family == AF_UNSPEC || \
+    /*
+    if (sc->gre_psrc.sa_family == AF_UNSPEC || \
         sc->gre_pdst.sa_family == AF_UNSPEC) {
         mbuf_freem(m);
         ifnet_touch_lastchange(ifp);
         err = ENETDOWN;
         goto error;
 	}
-    
+    */
+
     /*
 	 * infinite recursion calls may occurs when it's misconfigured.
 	 * We'll prevent this by introducing upper limit.
