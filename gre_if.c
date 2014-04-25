@@ -755,7 +755,7 @@ void gre_detach_proto_family(ifnet_t ifp, protocol_family_t protocol)
 
 #ifdef DEBUG
     if (err == ENOENT || err == ENXIO)
-        printf("%s: ifnet_attach_protocol(), %s%d with proto: 0x%x, error = %s\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp), protocol, err == ENOENT ? "ENOENT" : "ENXIO");
+        printf("%s: ifnet_detach_protocol(), %s%d with proto: 0x%x, error = %s\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp), protocol, err == ENOENT ? "ENOENT" : "ENXIO");
 
     printf("%s: fam=0x%x done\n", __FUNCTION__, protocol);
 #endif
