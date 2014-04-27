@@ -110,7 +110,7 @@ static errno_t  gre_pre_output(ifnet_t ifp, protocol_family_t protocol, mbuf_t *
 static errno_t  gre_framer(ifnet_t ifp, mbuf_t *m, const struct sockaddr *dest, const char *dest_linkaddr, const char *frame_type);
 static errno_t  gre_output(ifnet_t ifp, mbuf_t m);
 
-static u_int16_t ip_randomid();
+static u_int16_t gre_ip_randomid(void);
 
 // vars
 static lck_rw_t *gre_lck = NULL; // protect gre_softc_list
@@ -1534,12 +1534,12 @@ gre_framer(ifnet_t ifp, mbuf_t *mr, const struct sockaddr *dest, __unused const 
                     }
                     break;
                 case AF_INET6:
-                    gre_ip_id = ip_randomid();
+                    gre_ip_id = gre_ip_randomid();
                     etype = ETHERTYPE_IPV6;
                     break;
 #if ENABLE_APPLETALK
                 case AF_APPLETALK:
-                    gre_ip_id = ip_randomid();
+                    gre_ip_id = gre_ip_randomid();
                     //etype = ETHERTYPE_AT;
                     break;
 #endif
@@ -1703,7 +1703,7 @@ gre_in_cksum(u_int16_t *p, u_int len)
  * generate a random ip id
  * FIXME random is not RANDOM
  */
-static inline u_int16_t ip_randomid()
+static inline u_int16_t gre_ip_randomid(void)
 {
     return (u_int16_t)(random() & 0xffff);
 }
