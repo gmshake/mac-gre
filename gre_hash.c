@@ -16,7 +16,6 @@
 #include <netinet/ip.h>
 
 #include "gre_if.h"
-#include "gre_hash.h"
 
 #define BITS 5
 /* 32 should be enough */
@@ -46,9 +45,41 @@ static inline uint32_t gre_hash(uint32_t k0, uint32_t k1, uint32_t k2)
 }
 
 /*
- * gre_hash_init(), init gre softc hash table
+ * gre_hash_lock_shared(void)
  */
-errno_t gre_hash_init()
+void gre_hash_lock_shared(void)
+{
+    lck_rw_lock_shared(gre_slot_lck);
+}
+
+/*
+ * gre_hash_unlock_shared(void)
+ */
+void gre_hash_unlock_shared(void)
+{
+    lck_rw_unlock_shared(gre_slot_lck);
+}
+
+/*
+ * gre_hash_lock_exclusive(void)
+ */
+void gre_hash_lock_exclusive(void)
+{
+    lck_rw_lock_exclusive(gre_slot_lck);
+}
+
+/*
+ * gre_hash_unlock_exclusive(void)
+ */
+void gre_hash_unlock_exclusive(void)
+{
+    lck_rw_unlock_exclusive(gre_slot_lck);
+}
+
+/*
+ * gre_hash_init(void), init gre softc hash table
+ */
+errno_t gre_hash_init(void)
 {
 #ifdef DEBUG
     printf("%s ...\n", __FUNCTION__);
@@ -81,7 +112,7 @@ failed:
  * gre_hash_dispose(), free all resources
  * should we check if sc in slot have been all freed???
  */
-void gre_hash_dispose()
+void gre_hash_dispose(void)
 {
 #ifdef DEBUG
     printf("%s ...\n", __FUNCTION__);
@@ -117,38 +148,6 @@ void gre_hash_dispose()
 #ifdef DEBUG
     printf("%s: done, released %d total\n", __FUNCTION__, release_count);
 #endif
-}
-
-/*
- * gre_hash_lock_shared()
- */
-void gre_hash_lock_shared()
-{
-    lck_rw_lock_shared(gre_slot_lck);
-}
-
-/*
- * gre_hash_unlock_shared()
- */
-void gre_hash_unlock_shared()
-{
-    lck_rw_unlock_shared(gre_slot_lck);
-}
-
-/*
- * gre_hash_lock_exclusive()
- */
-void gre_hash_lock_exclusive()
-{
-    lck_rw_lock_exclusive(gre_slot_lck);
-}
-
-/*
- * gre_hash_unlock_exclusive()
- */
-void gre_hash_unlock_exclusive()
-{
-    lck_rw_unlock_exclusive(gre_slot_lck);
 }
 
 
@@ -207,17 +206,17 @@ errno_t gre_hash_delete(struct gre_softc *sc)
 #endif
         return EINVAL;
     }
-    
+
     uint32_t slot = gre_hash(((struct sockaddr_in *)&sc->gre_psrc)->sin_addr.s_addr, \
                              ((struct sockaddr_in *)&sc->gre_pdst)->sin_addr.s_addr, \
                              sc->encap_proto) & (SLOT_CNT - 1);
 #ifdef DEBUG
     printf("%s: slot -> %u\n", __FUNCTION__, slot);
 #endif
-    
+/*
     struct gre_softc *prev = gre_hash_slot[slot];
     struct gre_softc *p = prev;
-    
+
     while (p) {
         struct gre_softc *next = p->pcb_next;
         if (p == sc) { // found
@@ -238,7 +237,21 @@ errno_t gre_hash_delete(struct gre_softc *sc)
         prev = p;
         p = next;
     }
-    
+*/
+
+    for (struct gre_softc **p = &gre_hash_slot[slot]; *p != NULL; p = &(*p)->pcb_next) {
+        if (*p == sc) { // found
+            *p = (*p)->pcb_next;
+
+            sc->pcb_next = NULL;
+            gre_sc_release(sc);
+#ifdef DEBUG
+            printf("%s: done\n", __FUNCTION__);
+#endif
+            return 0;
+        }
+    }
+
 notfound:
 #ifdef DEBUG
     printf("%s: not found\n", __FUNCTION__);
@@ -262,22 +275,22 @@ struct gre_softc * gre_hash_find(struct in_addr src, struct in_addr dst, u_int8_
 #ifdef DEBUG
     printf("%s: slot -> %u\n", __FUNCTION__, slot);
 #endif
-    
+
     for (struct gre_softc *sc = gre_hash_slot[slot]; sc != NULL; sc = sc->pcb_next) {
         if (in_hosteq(src, ((struct sockaddr_in *)&sc->gre_psrc)->sin_addr) && \
             in_hosteq(dst, ((struct sockaddr_in *)&sc->gre_pdst)->sin_addr) && \
             sc->encap_proto == proto) {
-            
+
             gre_sc_reference(sc);
 
 #ifdef DEBUG
             printf("%s: found\n", __FUNCTION__);
 #endif
-            
+
             return sc;
         }
     }
-    
+
 notfound:
 #ifdef DEBUG
     printf("%s: not found\n", __FUNCTION__);
