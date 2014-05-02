@@ -176,7 +176,7 @@ mbuf_t in_gre_input(mbuf_t m, int hlen)
     struct ifnet_stat_increment_param incs;
     bzero(&incs, sizeof(incs));
     incs.packets_in = 1;
-	incs.bytes_in = mbuf_pkthdr_len(m);
+    incs.bytes_in = mbuf_pkthdr_len(m);
     
     ifnet_input(sc->sc_ifp, m, &incs);
     
@@ -265,7 +265,7 @@ mbuf_t in_mobile_input(mbuf_t m, int hlen)
     struct ifnet_stat_increment_param incs;
     bzero(&incs, sizeof(incs));
     incs.packets_in = 1;
-	incs.bytes_in = mbuf_pkthdr_len(m);
+    incs.bytes_in = mbuf_pkthdr_len(m);
 
     ifnet_input(sc->sc_ifp, m, &incs);
 

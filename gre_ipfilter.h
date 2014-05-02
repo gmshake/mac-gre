@@ -10,9 +10,7 @@
 #ifndef _GRE_IPFILTER_H
 #define _GRE_IPFILTER_H
 
-extern errno_t gre_ipfilter_init();
-extern errno_t gre_ipfilter_dispose();
-extern errno_t gre_ipfilter_attach();
-extern errno_t gre_ipfilter_detach();
+extern errno_t gre_ipfilter_init(void);
+extern errno_t gre_ipfilter_dispose(void);
 
 #endif // _GRE_IPFILTER_H

@@ -12,14 +12,14 @@
 struct gre_softc;
 struct in_addr;
 
-extern errno_t gre_hash_init(void);
-extern void gre_hash_dispose(void);
-
 // locks
 extern void gre_hash_lock_shared(void);
 extern void gre_hash_unlock_shared(void);
 extern void gre_hash_lock_exclusive(void);
 extern void gre_hash_unlock_exclusive(void);
+
+extern errno_t gre_hash_init(void);
+extern void gre_hash_dispose(void);
 
 extern errno_t gre_hash_add(struct gre_softc *sc);
 extern errno_t gre_hash_delete(struct gre_softc *sc);

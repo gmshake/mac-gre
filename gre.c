@@ -11,14 +11,7 @@
 
 #include "gre_ipfilter.h"
 #include "gre_hash.h"
-
-extern int gre_if_init();
-extern int gre_if_dispose();
-extern int gre_if_attach();
-extern int gre_proto_register();
-extern void gre_proto_unregister();
-extern errno_t gre_attach_proto_family(ifnet_t ifp, protocol_family_t protocol);
-extern void gre_detach_proto_family(ifnet_t ifp, protocol_family_t protocol);
+#include "gre_if.h"
 
 
 lck_grp_t *gre_lck_grp = NULL;
@@ -47,7 +40,7 @@ kern_return_t gre_start(kmod_info_t *ki, void *data)
         goto error;
 
     if (gre_if_init() != 0)
-		goto error;
+        goto error;
 
     if (gre_ipfilter_init() != 0)
         goto error;

@@ -29,16 +29,14 @@ extern lck_grp_t *gre_lck_grp;
 static lck_mtx_t *gre_ipf_mtx = NULL;
 static ipfilter_t gre_ipv4filter = NULL;
 
-errno_t gre_ipfilter_attach();
-errno_t gre_ipfilter_detach();
+static errno_t gre_ipfilter_attach(void);
+static errno_t gre_ipfilter_detach(void);
 
-static errno_t ipv4_infilter(void *cookie, mbuf_t *m, int offset, u_int8_t protocol);
-static void ipv4_if_detach(void *cookie);
 
 /*
  * gre_ipfilter_init(), initialize resources required by ip filter
  */
-errno_t gre_ipfilter_init()
+errno_t gre_ipfilter_init(void)
 {
 #ifdef DEBUG
     printf("%s ...\n", __FUNCTION__);
@@ -78,7 +76,7 @@ failed:
 /*
  * gre_ipfilter_dispose(), the opposite to gre_ipfilter_init(), ie clean up
  */
-errno_t gre_ipfilter_dispose()
+errno_t gre_ipfilter_dispose(void)
 {
 #ifdef DEBUG
     printf("%s ...\n", __FUNCTION__);
@@ -106,64 +104,7 @@ errno_t gre_ipfilter_dispose()
     return -1;
 }
 
-/*
- * gre_ipfilter_attach(), attach ipv4 filter
- */
-errno_t gre_ipfilter_attach()
-{
-    if (gre_ipv4filter)
-        return 0;
-#ifdef DEBUG
-    printf("%s ...\n", __FUNCTION__);
-#endif
-    errno_t err = 0;
-    struct ipf_filter ipf;
-    bzero(&ipf, sizeof(struct ipf_filter));
-    
-    ipf.cookie = (caddr_t)&gre_ipv4filter;
-	ipf.name = "org.gmshake.nke.GRE";
-	ipf.ipf_input = ipv4_infilter;
-	ipf.ipf_detach = ipv4_if_detach;
-
-	err = ipf_addv4(&ipf, &gre_ipv4filter);
-    if (err)
-        printf("%s: ipf_addv4(), err=0x%x\n", __FUNCTION__, err);
-#ifdef DEBUG
-    printf("%s: done\n", __FUNCTION__);
-#endif
-    return err;
-}
-
-/*
- * gre_ipfilter_detach(), detach ipv4 filter
- */
-errno_t gre_ipfilter_detach()
-{
-    if (gre_ipv4filter == NULL)
-        return 0;
-#ifdef DEBUG
-    printf("%s ...\n", __FUNCTION__);
-#endif
-    errno_t err = 0;
-    
-    err = ipf_remove(gre_ipv4filter);
-    if (err == 0) {
-        lck_mtx_lock(gre_ipf_mtx);
-        if (gre_ipv4filter) {
-            /* wait for the detach process */
-            msleep(&gre_ipv4filter, gre_ipf_mtx, PDROP, NULL, NULL);
-        } else {
-            lck_mtx_unlock(gre_ipf_mtx);
-        }
-    }
-
-#ifdef DEBUG
-    printf("%s: done\n", __FUNCTION__);
-#endif
-    return err;
-}
-
-/* the caller who call this function(ipv4_infilter) will free the mbuf when 
+/* the caller who call this function(ipv4_infilter) will free the mbuf when
  * it returns any error except EJUSTRETURN.
  * so, remember to check the function called by this function if it frees
  * the mbuf chain on error. That is, do remember return EJUSTRETURN
@@ -210,7 +151,7 @@ static errno_t ipv4_infilter(void *cookie, mbuf_t *m, int offset, u_int8_t proto
         default:
             break;
     }
-    
+
     return 0;
 }
 
@@ -227,3 +168,62 @@ static void ipv4_if_detach(void *cookie)
     } else
         lck_mtx_unlock(gre_ipf_mtx);
 }
+
+
+/*
+ * gre_ipfilter_attach(), attach ipv4 filter
+ */
+static errno_t gre_ipfilter_attach(void)
+{
+    if (gre_ipv4filter)
+        return 0;
+#ifdef DEBUG
+    printf("%s ...\n", __FUNCTION__);
+#endif
+    errno_t err = 0;
+    struct ipf_filter ipf;
+    bzero(&ipf, sizeof(struct ipf_filter));
+    
+    ipf.cookie = (caddr_t)&gre_ipv4filter;
+    ipf.name = "org.gmshake.nke.GRE";
+    ipf.ipf_input = ipv4_infilter;
+    ipf.ipf_detach = ipv4_if_detach;
+
+    err = ipf_addv4(&ipf, &gre_ipv4filter);
+    if (err)
+        printf("%s: ipf_addv4(), err=0x%x\n", __FUNCTION__, err);
+#ifdef DEBUG
+    printf("%s: done\n", __FUNCTION__);
+#endif
+    return err;
+}
+
+/*
+ * gre_ipfilter_detach(), detach ipv4 filter
+ */
+static errno_t gre_ipfilter_detach(void)
+{
+    if (gre_ipv4filter == NULL)
+        return 0;
+#ifdef DEBUG
+    printf("%s ...\n", __FUNCTION__);
+#endif
+    errno_t err = 0;
+    
+    err = ipf_remove(gre_ipv4filter);
+    if (err == 0) {
+        lck_mtx_lock(gre_ipf_mtx);
+        if (gre_ipv4filter) {
+            /* wait for the detach process */
+            msleep(&gre_ipv4filter, gre_ipf_mtx, PDROP, NULL, NULL);
+        } else {
+            lck_mtx_unlock(gre_ipf_mtx);
+        }
+    }
+
+#ifdef DEBUG
+    printf("%s: done\n", __FUNCTION__);
+#endif
+    return err;
+}
+
