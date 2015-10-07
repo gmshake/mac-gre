@@ -45,6 +45,7 @@
 
 #include <netinet/kpi_ipfilter.h>
 
+#include "ip6_gre.h"
 #include "gre_if.h"
 #include "gre_ip_encap.h"
 

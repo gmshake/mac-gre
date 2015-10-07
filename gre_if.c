@@ -75,7 +75,6 @@
 #include "gre_if.h"
 #include "ip_gre.h"
 #include "ip6_gre.h"
-#include "gre_hash.h"
 #include "gre_ip_encap.h"
 
 
@@ -89,8 +88,9 @@
 
 #define GRENAME    "gre"
 
-/* link layer header, ETHER_HDR_LEN + overhead, default is 16 in xnu1228 */
-#define MAX_LINKHDR (ETHER_HDR_LEN + 2)
+#define GRE_MAXUNIT	0x7fff	/* ifp->if_unit is only 15 bits(short int) */
+#define GRE_CONTROL_NAME "org.gmshake.nke.gre_control"
+
 
 // FIXME:
 #if defined(M_DEVBUF)
@@ -711,7 +711,7 @@ gre_attach_proto_family(ifnet_t ifp, protocol_family_t protocol_family)
 #ifdef DEBUG
     printf("%s: fam=0x%x\n", __FUNCTION__, protocol_family);
 #endif
-    struct ifnet_attach_proto_param    proto;
+    struct ifnet_attach_proto_param proto;
     errno_t err;
 
     bzero(&proto, sizeof(proto));
@@ -1630,7 +1630,7 @@ gre_if_detached(ifnet_t ifp)
  * proto is the protocol number of the "calling" foo_input() routine.
  */
 void
-gre_input(mbuf_t *mp, int *offp, int proto)
+gre_input(mbuf_t *mp, int *offp, int proto, void *arg)
 {
     struct gre_softc *sc;
     struct grehdr *gh;
@@ -1641,7 +1641,14 @@ gre_input(mbuf_t *mp, int *offp, int proto)
     int hlen, af;
 
     m = *mp;
-    sc = gre_encap_getarg(m);
+    //sc = gre_encap_getarg(m);
+    sc = (struct gre_softc *)arg;
+#ifdef DEBUG
+    if (sc == NULL) {
+        printf("%s sc is NULL, drop\n", __FUNCTION__);
+        goto drop1;
+    }
+#endif
 
     ifp = sc->gre_ifp;
     gh = (struct grehdr *)mtodo(m, *offp);
@@ -1705,28 +1712,42 @@ gre_input(mbuf_t *mp, int *offp, int proto)
     }
 
     m_adj(m, *offp + hlen);
-    
+
     mbuf_pkthdr_setrcvif(m, ifp);
     // FIXME, need set header??
-    //mbuf_pkthdr_setheader(m, NULL);
-    
+#ifdef DEBUG
+    void *ori_header = mbuf_pkthdr_header(m);
+#endif
+    mbuf_pkthdr_setheader(m, NULL);
+
     //bpf_tap_in(ifp, DLT_NULL, m, &af, sizeof(af));
-    
+
     struct ifnet_stat_increment_param incs;
     bzero(&incs, sizeof(incs));
     incs.packets_in = 1;
     incs.bytes_in = mbuf_pkthdr_len(m);
-    
+
+#ifdef DEBUG
+    printf("%s ifnet_input,  ori_header is %p ...\n", __FUNCTION__, ori_header);
+#endif
+
     ifnet_input(ifp, m, &incs);
-    
+
+#ifdef DEBUG
+    printf("%s ifnet_input OK\n", __FUNCTION__);
+#endif
     return;
 drop:
+#ifdef DEBUG
+    printf("%s drop packet ...\n", __FUNCTION__);
+#endif
     ifnet_stat_increment_in(ifp, 0, 0, 1);
+drop1:
     m_freem(m);
     return;
 }
 
-
+/*
 void
 gre_input10(mbuf_t m, int off)
 {
@@ -1735,7 +1756,7 @@ gre_input10(mbuf_t m, int off)
     proto = (mtod(m, struct ip *))->ip_p;
     gre_input(&m, &off, proto);
 }
-
+*/
 
 
 /*
@@ -1746,8 +1767,9 @@ static errno_t
 gre_demux(ifnet_t ifp, mbuf_t m, char *frame_header, protocol_family_t *protocol)
 {
 #ifdef DEBUG
-    printf("%s: %s%d, %p, %p, %p\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp), m, frame_header, protocol);
+    printf("%s: %s%d, m: %p, fh: %p, p: %p\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp), m, frame_header, protocol);
 #endif
+
     if (frame_header) {
         /*
          switch (*(u_int32_t *)frame_header) {
@@ -1773,10 +1795,10 @@ gre_demux(ifnet_t ifp, mbuf_t m, char *frame_header, protocol_family_t *protocol
     } else {/* we check ip header by ourselves */
         struct ip *iphdr = mbuf_data(m);
         switch (iphdr->ip_v) {
-            case 4: // AF_INET
+            case 4:
                 *protocol = AF_INET;
                 break;
-            case 6: // AF_INET6
+            case 6:
                 *protocol = AF_INET6;
                 break;
             default:
@@ -1806,8 +1828,8 @@ gre_media_input(ifnet_t ifp, protocol_family_t protocol, mbuf_t m, __unused char
     printf("%s: protocol: %d\n", __FUNCTION__, protocol);
 #endif
 
-    protocol_family_t bpf_header = protocol;
-    bpf_tap_in(ifp, DLT_NULL, m, &bpf_header, sizeof(bpf_header));
+    uint32_t af = protocol;
+    bpf_tap_in(ifp, DLT_NULL, m, &af, sizeof(af));
 
     errno_t err = proto_input(protocol, m);
     if (err) {
@@ -1843,7 +1865,7 @@ gre_pre_output(ifnet_t ifp,
         goto drop;
 
     // m->m_flags &= ~(M_BCAST|M_MCAST);
-    mbuf_setflags_mask(m, MBUF_BCAST | MBUF_MCAST, 0);
+    mbuf_setflags_mask(m, 0, MBUF_BCAST | MBUF_MCAST);
 
     if (dst->sa_family == AF_UNSPEC)
         bcopy(dst->sa_data, &af, sizeof(af));
@@ -1853,15 +1875,14 @@ gre_pre_output(ifnet_t ifp,
     // HACK: /* save af for gre_output */
     mbuf_set_csum_performed(m, 0, af);
 
-#ifdef DEBUG
-    printf("%s: bpf_tap_out() with protocol: %d\n", __FUNCTION__, protocol);
-#endif
+
     bpf_tap_out(ifp, DLT_NULL, m, &af, sizeof(af));
 
 #ifdef DEBUG
     printf("%s: done\n", __FUNCTION__);
 #endif
 
+    return 0;
 drop:
     ifnet_stat_increment_out(ifp, 0, 0, 1);
     return error;

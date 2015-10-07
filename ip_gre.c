@@ -53,8 +53,8 @@
 
 #include <netinet/kpi_ipfilter.h>
 
+#include "ip_gre.h"
 #include "gre_if.h"
-#include "in_gre.h"
 #include "gre_ip_encap.h"
 
 
@@ -158,14 +158,13 @@ in_gre_output(mbuf_t m, int af, int hlen)
 }
 
 
-int
+errno_t
 in_gre_attach(struct gre_softc *sc)
 {
 
 	KASSERT(sc->gre_ecookie == NULL, ("gre_ecookie isn't NULL"));
 	sc->gre_ecookie = (void *)gre_encap_attach_func(AF_INET, IPPROTO_GRE,
-					    in_gre_encapcheck, gre_input,
-						(void *)sc);
+					    in_gre_encapcheck, gre_input, sc);
 	if (sc->gre_ecookie == NULL)
 		return (EEXIST);
 	return (0);

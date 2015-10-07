@@ -64,12 +64,12 @@ struct grehdr {
 struct greip {
 	struct ip	gi_ip;
 	struct grehdr	gi_gre;
-}__attribute__((__packed__));
+} __attribute__((__packed__));
 
 struct greip6 {
 	struct ip6_hdr	gi6_ip6;
 	struct grehdr	gi6_gre;
-}__attribute__((__packed__));
+} __attribute__((__packed__));
 
 
 /*
@@ -84,12 +84,13 @@ struct greip6 {
 
 struct gre_softc {
 	ifnet_t             gre_ifp;
-	struct gre_softc        *pcb_next;
+	//struct gre_softc        *pcb_next;
 	TAILQ_ENTRY(gre_softc)  gre_list;
 	lck_rw_t		*gre_lock;
-	volatile SInt32	sc_refcnt;  /* reference count */
+	volatile SInt32		sc_refcnt;  /* reference count */
 	lck_mtx_t           *mtx;	/* interface mutex */
 
+	void*		gre_ecookie;
 	int		gre_family;	/* AF of delivery header */
 	uint32_t	gre_iseq;
 	uint32_t	gre_oseq;
@@ -113,7 +114,7 @@ struct gre_softc {
 
 //	wccp_ver_t  wccp_ver;	/* version of the WCCP */
 
-	void *gre_ecookie;
+
 #if USE_IP_OUTPUT
 	struct route route;   /* route used for ip_output */
 #endif
@@ -201,10 +202,6 @@ struct gre_softc {
 #define sin6tosa(sin6)  ((struct sockaddr *)(void *)(sin6))
 #endif
 
-#define	GRE_TTL	30
-#define GRE_MAXUNIT	0x7fff	/* ifp->if_unit is only 15 bits(short int) */
-#define GRE_CONTROL_NAME "org.gmshake.nke.gre_control"
-
 
 extern void gre_sc_reference(struct gre_softc *sc);
 extern void gre_sc_release(struct gre_softc *sc);
@@ -218,11 +215,11 @@ extern int gre_if_attach(void);
 
 //extern uint16_t    gre_in_cksum(uint16_t *p, u_int len);
 
-extern void	gre_input(mbuf_t *mp, int *offp, int proto);
+extern void	gre_input(mbuf_t *, int *, int, void *);
 
-
+/*
 extern struct gre_softc * gre_softc_search4(in_addr_t src, in_addr_t dst);
 extern struct gre_softc * gre_softc_search6(struct in6_addr src, struct in6_addr dst);
-
+*/
 
 #endif

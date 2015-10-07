@@ -18,10 +18,9 @@
 //#include <netinet/ip.h>
 #include <netinet/kpi_ipfilter.h>
 
+#include "gre_ipfilter.h"
 #include "gre_locks.h"
 #include "gre_if.h"
-#include "gre_hash.h"
-#include "in_gre.h"
 #include "gre_ip_encap.h"
 
 
@@ -35,7 +34,8 @@ static errno_t gre_ip4filter_detach(void);
 /*
  * gre_ipfilter_init(), initialize resources required by ip filter
  */
-errno_t gre_ip4filter_init(void)
+errno_t
+gre_ip4filter_init(void)
 {
 #ifdef DEBUG
     printf("%s ...\n", __FUNCTION__);
@@ -75,7 +75,8 @@ failed:
 /*
  * gre_ipfilter_dispose(), the opposite to gre_ipfilter_init(), ie clean up
  */
-errno_t gre_ip4filter_dispose(void)
+errno_t
+gre_ip4filter_dispose(void)
 {
 #ifdef DEBUG
     printf("%s ...\n", __FUNCTION__);
@@ -121,7 +122,8 @@ errno_t gre_ip4filter_dispose(void)
  * @param offset    ip header offset
  * @param protocol  proto, IPPROTO_GRE/IPPROTO_MOBILE
  */
-static errno_t gre_ipv4_infilter(void *cookie, mbuf_t *data, int offset, u_int8_t protocol)
+static errno_t
+gre_ipv4_infilter(void *cookie, mbuf_t *data, int offset, u_int8_t protocol)
 {
 	mbuf_t m;
 	errno_t error;
@@ -144,7 +146,8 @@ static errno_t gre_ipv4_infilter(void *cookie, mbuf_t *data, int offset, u_int8_
 /*
  * is called to notify the filter that it has been detached.
  */
-static void gre_ipv4_if_detach(void *cookie)
+static void
+gre_ipv4_if_detach(void *cookie)
 {
     lck_mtx_lock(gre_ip4f_mtx);
     if (gre_ipv4filter) {
@@ -159,7 +162,8 @@ static void gre_ipv4_if_detach(void *cookie)
 /*
  * gre_ip4filter_attach(), attach ipv4 filter
  */
-static errno_t gre_ip4filter_attach(void)
+static errno_t
+gre_ip4filter_attach(void)
 {
     if (gre_ipv4filter)
         return 0;
@@ -171,7 +175,7 @@ static errno_t gre_ip4filter_attach(void)
     bzero(&ipf, sizeof(struct ipf_filter));
 
     ipf.cookie = (caddr_t)&gre_ipv4filter;
-    ipf.name = "org.gmshake.nke.GRE";
+    ipf.name = "org.gmshake.nke.gre_ipv4filter";
     ipf.ipf_input = gre_ipv4_infilter;
     ipf.ipf_detach = gre_ipv4_if_detach;
 
@@ -188,7 +192,8 @@ static errno_t gre_ip4filter_attach(void)
 /*
  * gre_ipfilter_detach(), detach ipv4 filter
  */
-static errno_t gre_ip4filter_detach(void)
+static errno_t
+gre_ip4filter_detach(void)
 {
     if (gre_ipv4filter == NULL)
         return 0;

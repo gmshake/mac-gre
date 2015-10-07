@@ -44,10 +44,12 @@
 
 #include <sys/sysctl.h>
 
+#include "gre_if.h"
+
+
 extern struct sysctl_oid sysctl__net_gre_ttl;
 
 errno_t in_gre_output(mbuf_t m, int af, int hlen);
-
-int in_gre_attach(struct gre_softc *sc);
+errno_t in_gre_attach(struct gre_softc *sc);
 
 #endif

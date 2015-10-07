@@ -35,7 +35,7 @@
 
 LIST_HEAD(, gre_encaptab) gre_encaptab = LIST_HEAD_INITIALIZER(&gre_encaptab);
 
-#define GRE_MODULE_TAG_ENCAT "org.gmshake.gre.NKE.encap"
+#define GRE_MODULE_TAG_ENCAT "org.gmshake.nke.gre_encaptab"
 static mbuf_tag_id_t gre_module_tag_id;
 
 #define GRE_MODULE_TAG_ID gre_module_tag_id
@@ -71,6 +71,10 @@ gre_encap_init(void)
 		printf("%s: gre_if_family overflow: %d\n", __FUNCTION__, gre_module_tag_id);
 		return ENOENT;
 	}
+
+#ifdef DEBUG
+	printf("%s: gre_module_tag_id -> %d\n", __FUNCTION__, gre_module_tag_id);
+#endif
 
 	gre_encap_lck = lck_rw_alloc_init(gre_lck_grp, gre_lck_attributes);
 	if (gre_encap_lck == NULL) {
@@ -121,7 +125,7 @@ gre_encap4_input(mbuf_t m, int off)
 	struct ip *ip;
 	struct sockaddr_in s, d;
 	//const struct protosw *psw;
-	void (*pr_input)(mbuf_t *, int *, int);
+	void (*pr_input)(mbuf_t *, int *, int, void *);
 	struct gre_encaptab *ep, *match;
 	void *arg;
 	int prio, matchprio;
@@ -200,8 +204,8 @@ gre_encap4_input(mbuf_t m, int off)
 //		} else
 //			m_freem(m);
 		if (pr_input) {
-			gre_encap_fillarg(m, arg);
-			pr_input(&m, &off, proto);
+			//gre_encap_fillarg(m, arg);
+			(*pr_input)(&m, &off, proto, arg);
 		} else
 			m_freem(m);
 		return EJUSTRETURN;
@@ -219,7 +223,7 @@ gre_encap6_input(mbuf_t *mp, int *offp, int proto)
 	struct ip6_hdr *ip6;
 	struct sockaddr_in6 s, d;
 	//const struct ip6protosw *psw;
-	void (*pr_input)(mbuf_t *, int *, int);
+	void (*pr_input)(mbuf_t *, int *, int, void *);
 	struct gre_encaptab *ep, *match;
 	void *arg;
 	int prio, matchprio;
@@ -281,11 +285,10 @@ gre_encap6_input(mbuf_t *mp, int *offp, int proto)
 //			return IPPROTO_DONE;
 //		}
 		if (pr_input) {
-			gre_encap_fillarg(m, arg);
-			pr_input(mp, offp, proto);
-		} else {
+			//gre_encap_fillarg(m, arg);
+			(*pr_input)(mp, offp, proto, arg);
+		} else
 			m_freem(m);
-		}
 		return EJUSTRETURN;
 	}
 
@@ -314,7 +317,7 @@ int af;
 int proto;
 const struct sockaddr *sp, *sm;
 const struct sockaddr *dp, *dm;
-void (*pr_input)(mbuf_t *, int *, int);
+void (*pr_input)(mbuf_t *, int *, int, void *);
 void *arg;
 {
 	struct gre_encaptab *ep;
@@ -388,7 +391,7 @@ gre_encap_attach_func(af, proto, func, pr_input, arg)
 int af;
 int proto;
 int (*func)(const mbuf_t , int, int, void *);
-void (*pr_input)(mbuf_t *, int *, int);
+void (*pr_input)(mbuf_t *, int *, int, void *);
 void *arg;
 {
 #ifdef DEBUG
@@ -517,6 +520,7 @@ const struct sockaddr *dp;
 }
 
 
+// FIXME: bugs here...
 static void
 gre_encap_fillarg(
 	      mbuf_t m,
@@ -524,22 +528,34 @@ gre_encap_fillarg(
 {
 	void **et;
 
-	mbuf_tag_allocate(m, GRE_MODULE_TAG_ID, GRE_TAG_TYPE_ENCAP, sizeof(et),
-			  MBUF_WAITOK, (void **)&et);
-
-	if (et != NULL) {
+	if (mbuf_tag_allocate(m, GRE_MODULE_TAG_ID, GRE_TAG_TYPE_ENCAP,
+			      sizeof(et), MBUF_WAITOK, (void **)&et) == 0) {
+#ifdef DEBUG
+		printf("%s mbuf_tag_allocate OK %p\n", __FUNCTION__, et);
+#endif
 		*et = arg;
 	}
+#ifdef DEBUG
+	else {
+		printf("%s mbuf_tag_allocate failed\n", __FUNCTION__);
+	}
+#endif
 }
 
 
+// FIXME: bugs here...
 void *
 gre_encap_getarg(mbuf_t m)
 {
 	void *p = NULL;
 
 	size_t length = 0;
-	mbuf_tag_find(m, GRE_MODULE_TAG_ID, GRE_TAG_TYPE_ENCAP, &length, (void**)&p);
+	if (mbuf_tag_find(m, GRE_MODULE_TAG_ID, GRE_TAG_TYPE_ENCAP, &length, (void**)&p) == 0) {
+		mbuf_tag_free(m, GRE_MODULE_TAG_ID, GRE_TAG_TYPE_ENCAP);
+#ifdef DEBUG
+		printf("%s found %p\n", __FUNCTION__, p);
+#endif
+	}
 
 //	tag = m_tag_locate(m, KERNEL_MODULE_TAG_ID, KERNEL_TAG_TYPE_ENCAP, NULL);
 //	if (tag) {

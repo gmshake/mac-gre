@@ -17,10 +17,9 @@
 //#include <netinet/in.h>
 #include <netinet/kpi_ipfilter.h>
 
+#include "gre_ipfilter.h"
 #include "gre_locks.h"
 #include "gre_if.h"
-#include "gre_hash.h"
-#include "in_gre.h"
 #include "gre_ip_encap.h"
 
 
@@ -34,7 +33,8 @@ static errno_t gre_ip6filter_detach(void);
 /*
  * gre_ipfilter_init(), initialize resources required by ip filter
  */
-errno_t gre_ip6filter_init(void)
+errno_t
+gre_ip6filter_init(void)
 {
 #ifdef DEBUG
 	printf("%s ...\n", __FUNCTION__);
@@ -74,7 +74,8 @@ failed:
 /*
  * gre_ipfilter_dispose(), the opposite to gre_ipfilter_init(), ie clean up
  */
-errno_t gre_ip6filter_dispose(void)
+errno_t
+gre_ip6filter_dispose(void)
 {
 #ifdef DEBUG
 	printf("%s ...\n", __FUNCTION__);
@@ -120,7 +121,8 @@ errno_t gre_ip6filter_dispose(void)
  * @param offset    ip header offset
  * @param protocol  proto, IPPROTO_GRE/IPPROTO_MOBILE
  */
-static errno_t gre_ipv6_infilter(void *cookie, mbuf_t *data, int offset, u_int8_t protocol)
+static errno_t
+gre_ipv6_infilter(void *cookie, mbuf_t *data, int offset, u_int8_t protocol)
 {
 	errno_t error;
 
@@ -140,7 +142,8 @@ static errno_t gre_ipv6_infilter(void *cookie, mbuf_t *data, int offset, u_int8_
 /*
  * is called to notify the filter that it has been detached.
  */
-static void gre_ipv6_if_detach(void *cookie)
+static void
+gre_ipv6_if_detach(void *cookie)
 {
 	lck_mtx_lock(gre_ip6f_mtx);
 	if (gre_ipv6filter) {
@@ -155,7 +158,8 @@ static void gre_ipv6_if_detach(void *cookie)
 /*
  * gre_ip6filter_attach(), attach ipv6 filter
  */
-static errno_t gre_ip6filter_attach(void)
+static errno_t
+gre_ip6filter_attach(void)
 {
 	if (gre_ipv6filter)
 		return 0;
@@ -167,7 +171,7 @@ static errno_t gre_ip6filter_attach(void)
 	bzero(&ipf, sizeof(struct ipf_filter));
 
 	ipf.cookie = (caddr_t)&gre_ipv6filter;
-	ipf.name = "org.gmshake.nke.GRE";
+	ipf.name = "org.gmshake.nke.gre_ipv6filter";
 	ipf.ipf_input = gre_ipv6_infilter;
 	ipf.ipf_detach = gre_ipv6_if_detach;
 
@@ -184,7 +188,8 @@ static errno_t gre_ip6filter_attach(void)
 /*
  * gre_ipfilter_detach(), detach ipv6 filter
  */
-static errno_t gre_ip6filter_detach(void)
+static errno_t
+gre_ip6filter_detach(void)
 {
 	if (gre_ipv6filter == NULL)
 		return 0;
