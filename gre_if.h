@@ -1,8 +1,6 @@
-/*	$NetBSD: if_gre.h,v 1.13 2003/11/10 08:51:52 wiz Exp $ */
-/*	 $FreeBSD: src/sys/net/if_gre.h,v 1.13.10.2.4.1 2009/04/15 03:14:26 kensmith Exp $ */
-
 /*-
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
+ * Copyright (c) 2014 Andrey V. Elsukov <ae@FreeBSD.org>
  * All rights reserved
  *
  * This code is derived from software contributed to The NetBSD Foundation
@@ -16,13 +14,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD
- *        Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -35,100 +26,116 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $NetBSD: if_gre.h,v 1.13 2003/11/10 08:51:52 wiz Exp $
+ * $FreeBSD$
  */
 
 #ifndef _NET_IF_GRE_H
 #define _NET_IF_GRE_H
 
-/*
- * should include these
- */
+
+#include <libkern/OSTypes.h>
 #include <sys/systm.h>
 #include <sys/appleapiopts.h>
+
 #include <net/kpi_interface.h>
+
 #include <netinet/in.h>
 #include <netinet/ip.h>
+
 #include <netinet/ip6.h>
+
 
 #include "gre_config.h"
 
-#define GRE_CONTROL_NAME "org.gmshake.nke.gre_control"
+
+/* GRE header according to RFC 2784 and RFC 2890 */
+struct grehdr {
+	uint16_t	gre_flags;	/* GRE flags */
+#define	GRE_FLAGS_CP	0x8000		/* checksum present */
+#define	GRE_FLAGS_KP	0x2000		/* key present */
+#define	GRE_FLAGS_SP	0x1000		/* sequence present */
+#define	GRE_FLAGS_MASK	(GRE_FLAGS_CP|GRE_FLAGS_KP|GRE_FLAGS_SP)
+	uint16_t	gre_proto;	/* protocol type */
+	uint32_t	gre_opts[0];	/* optional fields */
+} __attribute__((__packed__));
+
+struct greip {
+	struct ip	gi_ip;
+	struct grehdr	gi_gre;
+}__attribute__((__packed__));
+
+struct greip6 {
+	struct ip6_hdr	gi6_ip6;
+	struct grehdr	gi6_gre;
+}__attribute__((__packed__));
+
 
 /*
  * Version of the WCCP, need to be configured manually since
  * header for version 2 is the same but IP payload is prepended
  * with additional 4-bytes field.
  */
-typedef enum {
-	WCCP_V1 = 0,
-	WCCP_V2
-} wccp_ver_t;
+//typedef enum {
+//	WCCP_V1 = 0,
+//	WCCP_V2
+//} wccp_ver_t;
 
 struct gre_softc {
-    TAILQ_ENTRY(gre_softc)  sc_list;
-    struct gre_softc        *pcb_next;
-	ifnet_t             sc_ifp;
-    volatile uint32_t   sc_refcnt;  /* reference count */
-    lck_mtx_t           *mtx;		/* interface mutex */
+	ifnet_t             gre_ifp;
+	struct gre_softc        *pcb_next;
+	TAILQ_ENTRY(gre_softc)  gre_list;
+	lck_rw_t		*gre_lock;
+	volatile SInt32	sc_refcnt;  /* reference count */
+	lck_mtx_t           *mtx;	/* interface mutex */
 
-    struct sockaddr gre_psrc; /* Physical src addr */
-	struct sockaddr gre_pdst; /* Physical dst addr */
-    
-    u_int8_t    proto_flag; /* gre local address protocols */
-#define AF_INET_PRESENT         0x01
-#define AF_INET6_PRESENT        0x02
-#define AF_APPLETALK_PRESENT    0x04
-	u_int8_t    encap_proto;		/* protocol of encapsulator, IPPROTO_GRE, IPPROTO_MOBILE ... */
-    u_int16_t   is_detaching;		/* state of the interface */
-    
-	uint32_t    called;		/* infinite recursion preventer */
-	uint32_t    key;		/* key included in outgoing GRE packets */  /* zero means none */
-	wccp_ver_t  wccp_ver;	/* version of the WCCP */
-    
-    bpf_packet_func bpf_input;
-    bpf_packet_func bpf_output;
+	int		gre_family;	/* AF of delivery header */
+	uint32_t	gre_iseq;
+	uint32_t	gre_oseq;
+	uint32_t	gre_key;	/* key included in outgoing GRE packets */  /* zero means none */
+	uint32_t	gre_options;
+	uint32_t	gre_mtu;
+	u_int		gre_hlen;	/* header size */
+
+	union {
+		void		*hdr;
+		struct greip	*gihdr;
+		struct greip6	*gi6hdr;
+	} gre_uhdr;
+
+//	struct sockaddr gre_psrc; /* Physical src addr */
+//	struct sockaddr gre_pdst; /* Physical dst addr */
+
+	uint16_t   is_detaching;	/* state of the interface */
+
+	//	uint32_t    called;		/* infinite recursion preventer */
+
+//	wccp_ver_t  wccp_ver;	/* version of the WCCP */
+
+	void *gre_ecookie;
 #if USE_IP_OUTPUT
-    struct route route;   /* route used for ip_output */
+	struct route route;   /* route used for ip_output */
 #endif
 };
 
-struct gre_h {
-	u_int16_t flags;	/* GRE flags */
-	u_int16_t ptype;	/* protocol type of payload, typically Ether protocol type */
-	uint32_t options[0];	/* optional options */
-    /*
-     *  from here on: fields are optional, presence indicated by flags
-     *
-     u_int_16 checksum	checksum (one-complements of GRE header
-     and payload
-     Present if (ck_pres | rt_pres == 1).
-     Valid if (ck_pres == 1).
-     u_int_16 offset		offset from start of routing filed to
-     first octet of active SRE (see below).
-     Present if (ck_pres | rt_pres == 1).
-     Valid if (rt_pres == 1).
-     u_int_32 key		inserted by encapsulator e.g. for
-     authentication
-     Present if (key_pres ==1 ).
-     u_int_32 seq_num	Sequence number to allow for packet order
-     Present if (seq_pres ==1 ).
-     struct gre_sre[] routing Routing fileds (see below)
-     Present if (rt_pres == 1)
-     */
-}__attribute__((__packed__));
+//#define	GRE2IFP(sc)		((sc)->gre_ifp)
+#define	GRE_RLOCK(sc)		lck_rw_lock_shared((sc)->gre_lock)
+#define	GRE_RUNLOCK(sc)		lck_rw_unlock_shared((sc)->gre_lock)
+#define	GRE_WLOCK(sc)		lck_rw_lock_exclusive((sc)->gre_lock)
+#define	GRE_WUNLOCK(sc)		lck_rw_unlock_exclusive((sc)->gre_lock)
 
-struct greip {
-	struct ip       gi_i;
-	struct gre_h    gi_g;
-}__attribute__((__packed__));
+#define sx_xlock(lck)		lck_rw_lock_exclusive(lck)
+#define sx_xunlock(lck)		lck_rw_unlock_exclusive(lck)
+#define sx_assert(lck, st)
 
-#ifdef DEPLOY
-struct greip6 {
-	struct ip6_hdr  gi_i;
-	struct gre_h    gi_g;
-}__attribute__((__packed__));
-#endif
+#define	gre_hdr			gre_uhdr.hdr
+#define	gre_gihdr		gre_uhdr.gihdr
+#define	gre_gi6hdr		gre_uhdr.gi6hdr
+#define	gre_oip			gre_gihdr->gi_ip
+#define	gre_oip6		gre_gi6hdr->gi6_ip6
 
+/*
 #define gi_ver      gi_i.ip_v
 #define gi_hlen     gi_i.ip_hl
 #define gi_pr		gi_i.ip_p
@@ -140,67 +147,16 @@ struct greip6 {
 #define gi_ptype	gi_g.ptype
 #define gi_flags	gi_g.flags
 #define gi_options	gi_g.options
+*/
 
-
-#define GRE_CP		0x8000  /* Checksum Present */
-#define GRE_RP		0x4000  /* Routing Present */
-#define GRE_KP		0x2000  /* Key Present */
-#define GRE_SP		0x1000  /* Sequence Present */
-#define GRE_SS		0x0800	/* Strict Source Route */
 
 /*
  * CISCO uses special type for GRE tunnel created as part of WCCP
  * connection, while in fact those packets are just IPv4 encapsulated
  * into GRE.
  */
-#define WCCP_PROTOCOL_TYPE	0x883E
+#define ETHERTYPE_WCCP		0x883E
 
-/*
- * gre_sre defines a Source route Entry. These are needed if packets
- * should be routed over more than one tunnel hop by hop
- */
-struct gre_sre {
-	u_int16_t sre_family;   /* address family */
-	u_char	sre_offset;     /* offset to first octet of active entry */
-	u_char	sre_length;     /* number of octets in the SRE. sre_lengthl==0 -> last entry. */
-	u_char	*sre_rtinfo;    /* the routing information */
-};
-
-struct greioctl {
-	int unit;
-	struct in_addr addr;
-};
-
-/* for mobile encaps */
-
-struct mobile_h {
-	u_int16_t proto;		/* protocol and S-bit */
-	u_int16_t hcrc;			/* header checksum */
-	u_int32_t odst;			/* original destination address */
-	u_int32_t osrc;			/* original source addr, if S-bit set */
-}__attribute__((__packed__));
-
-struct mobip_h {
-	struct ip	mi;
-	struct mobile_h	mh;
-}__attribute__((__packed__));
-
-
-#define MOB_H_SIZ_S		(sizeof(struct mobile_h) - sizeof(u_int32_t))
-#define MOB_H_SIZ_L		(sizeof(struct mobile_h))
-#define MOB_H_SBIT	0x0080
-
-#define	GRE_TTL	30
-#define GRE_MAXUNIT	0x7fff	/* ifp->if_unit is only 15 bits(short int) */
-
-#ifndef IPPROTO_MOBILE
-#define IPPROTO_MOBILE          55              /* IP Mobility */
-#endif
-
-
-/*
- * ioctls needed to manipulate the interface
- */
 
 #define GRESADDRS	_IOW('i', 101, struct ifreq)
 #define GRESADDRD	_IOW('i', 102, struct ifreq)
@@ -208,8 +164,15 @@ struct mobip_h {
 #define GREGADDRD	_IOWR('i', 104, struct ifreq)
 #define GRESPROTO	_IOW('i' , 105, struct ifreq)
 #define GREGPROTO	_IOWR('i', 106, struct ifreq)
-#define GREGKEY		_IOWR('i', 107, struct ifreq)
-#define GRESKEY		_IOW('i', 108, struct ifreq)
+
+#define	GREGKEY		_IOWR('i', 107, struct ifreq)
+#define	GRESKEY		_IOW('i', 108, struct ifreq)
+#define	GREGOPTS	_IOWR('i', 109, struct ifreq)
+#define	GRESOPTS	_IOW('i', 110, struct ifreq)
+
+#define	GRE_ENABLE_CSUM		0x0001
+#define	GRE_ENABLE_SEQ		0x0002
+#define	GRE_OPTMASK		(GRE_ENABLE_CSUM|GRE_ENABLE_SEQ)
 
 /*
  * usefull macro
@@ -226,6 +189,23 @@ struct mobip_h {
 #define sintosa(sin)    ((struct sockaddr *)(sin))
 #endif
 
+#ifndef SIN6
+#define SIN6(s)         ((struct sockaddr_in6 *)(void *)s)
+#endif
+
+#ifndef satosin6
+#define satosin6(sa)    SIN6(sa)
+#endif
+
+#ifndef sin6tosa
+#define sin6tosa(sin6)  ((struct sockaddr *)(void *)(sin6))
+#endif
+
+#define	GRE_TTL	30
+#define GRE_MAXUNIT	0x7fff	/* ifp->if_unit is only 15 bits(short int) */
+#define GRE_CONTROL_NAME "org.gmshake.nke.gre_control"
+
+
 extern void gre_sc_reference(struct gre_softc *sc);
 extern void gre_sc_release(struct gre_softc *sc);
 
@@ -236,7 +216,13 @@ extern int gre_if_init(void);
 extern int gre_if_dispose(void);
 extern int gre_if_attach(void);
 
-extern u_int16_t    gre_in_cksum(u_int16_t *p, u_int len);
+//extern uint16_t    gre_in_cksum(uint16_t *p, u_int len);
+
+extern void	gre_input(mbuf_t *mp, int *offp, int proto);
+
+
+extern struct gre_softc * gre_softc_search4(in_addr_t src, in_addr_t dst);
+extern struct gre_softc * gre_softc_search6(struct in6_addr src, struct in6_addr dst);
 
 
 #endif

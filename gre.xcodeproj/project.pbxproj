@@ -21,12 +21,21 @@
 		59FD48C512DB358000463FB2 /* gre_domain.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FD48C412DB358000463FB2 /* gre_domain.c */; };
 		59FD48C812DB38D700463FB2 /* in_gre.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FD48C612DB38D700463FB2 /* in_gre.h */; };
 		59FD48C912DB38D700463FB2 /* in_gre.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FD48C712DB38D700463FB2 /* in_gre.c */; };
-		59FEBA2012DEAA620089AA11 /* gre_ipfilter.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FEBA1E12DEAA620089AA11 /* gre_ipfilter.c */; };
+		59FEBA2012DEAA620089AA11 /* gre_ip4filter.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FEBA1E12DEAA620089AA11 /* gre_ip4filter.c */; };
 		59FEBA2112DEAA620089AA11 /* gre_ipfilter.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FEBA1F12DEAA620089AA11 /* gre_ipfilter.h */; };
 		59FEBA2B12DEB13E0089AA11 /* gre_config.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FEBA2A12DEB13E0089AA11 /* gre_config.h */; };
 		6C1F2DEA18F2E0EE002EC1E7 /* radix.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C1F2DE918F2E0EE002EC1E7 /* radix.h */; };
 		6C1F2DEC18F2E15F002EC1E7 /* route.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C1F2DEB18F2E15F002EC1E7 /* route.h */; };
 		6C1F2DF018F2E2B9002EC1E7 /* kernel_build.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C1F2DEF18F2E2B9002EC1E7 /* kernel_build.h */; };
+		6C200F741BC437CA0089FDCA /* ip6_gre.c in Sources */ = {isa = PBXBuildFile; fileRef = 6C200F721BC437CA0089FDCA /* ip6_gre.c */; };
+		6C200F751BC437CA0089FDCA /* ip6_gre.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C200F731BC437CA0089FDCA /* ip6_gre.h */; };
+		6C200F781BC442F40089FDCA /* ip_gre.c in Sources */ = {isa = PBXBuildFile; fileRef = 6C200F761BC442F40089FDCA /* ip_gre.c */; };
+		6C200F791BC442F40089FDCA /* ip_gre.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C200F771BC442F40089FDCA /* ip_gre.h */; };
+		6CAC250E1BC4560A005FA637 /* gre_ip_encap.c in Sources */ = {isa = PBXBuildFile; fileRef = 6CAC250C1BC4560A005FA637 /* gre_ip_encap.c */; };
+		6CAC250F1BC4560A005FA637 /* gre_ip_encap.h in Headers */ = {isa = PBXBuildFile; fileRef = 6CAC250D1BC4560A005FA637 /* gre_ip_encap.h */; };
+		6CAC25111BC480F6005FA637 /* gre_ip6filter.c in Sources */ = {isa = PBXBuildFile; fileRef = 6CAC25101BC480F6005FA637 /* gre_ip6filter.c */; };
+		6CE6C2861BC0657C00B49C61 /* gre_locks.c in Sources */ = {isa = PBXBuildFile; fileRef = 6CE6C2841BC0657C00B49C61 /* gre_locks.c */; };
+		6CE6C2871BC0657C00B49C61 /* gre_locks.h in Headers */ = {isa = PBXBuildFile; fileRef = 6CE6C2851BC0657C00B49C61 /* gre_locks.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -51,12 +60,21 @@
 		59FD48C412DB358000463FB2 /* gre_domain.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gre_domain.c; sourceTree = "<group>"; };
 		59FD48C612DB38D700463FB2 /* in_gre.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = in_gre.h; sourceTree = "<group>"; };
 		59FD48C712DB38D700463FB2 /* in_gre.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = in_gre.c; sourceTree = "<group>"; };
-		59FEBA1E12DEAA620089AA11 /* gre_ipfilter.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gre_ipfilter.c; sourceTree = "<group>"; };
+		59FEBA1E12DEAA620089AA11 /* gre_ip4filter.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gre_ip4filter.c; sourceTree = "<group>"; };
 		59FEBA1F12DEAA620089AA11 /* gre_ipfilter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gre_ipfilter.h; sourceTree = "<group>"; };
 		59FEBA2A12DEB13E0089AA11 /* gre_config.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gre_config.h; sourceTree = "<group>"; };
 		6C1F2DE918F2E0EE002EC1E7 /* radix.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = radix.h; path = 10.9/radix.h; sourceTree = "<group>"; };
 		6C1F2DEB18F2E15F002EC1E7 /* route.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = route.h; path = 10.9/route.h; sourceTree = "<group>"; };
 		6C1F2DEF18F2E2B9002EC1E7 /* kernel_build.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kernel_build.h; sourceTree = "<group>"; };
+		6C200F721BC437CA0089FDCA /* ip6_gre.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ip6_gre.c; sourceTree = "<group>"; };
+		6C200F731BC437CA0089FDCA /* ip6_gre.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ip6_gre.h; sourceTree = "<group>"; };
+		6C200F761BC442F40089FDCA /* ip_gre.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ip_gre.c; sourceTree = "<group>"; };
+		6C200F771BC442F40089FDCA /* ip_gre.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ip_gre.h; sourceTree = "<group>"; };
+		6CAC250C1BC4560A005FA637 /* gre_ip_encap.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gre_ip_encap.c; sourceTree = "<group>"; };
+		6CAC250D1BC4560A005FA637 /* gre_ip_encap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gre_ip_encap.h; sourceTree = "<group>"; };
+		6CAC25101BC480F6005FA637 /* gre_ip6filter.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gre_ip6filter.c; sourceTree = "<group>"; };
+		6CE6C2841BC0657C00B49C61 /* gre_locks.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gre_locks.c; sourceTree = "<group>"; };
+		6CE6C2851BC0657C00B49C61 /* gre_locks.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gre_locks.h; sourceTree = "<group>"; };
 		D27513B306A6225300ADB3A4 /* Kernel.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Kernel.framework; path = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk/System/Library/Frameworks/Kernel.framework; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
 
@@ -105,16 +123,25 @@
 			children = (
 				6C1F2DEE18F2E1BE002EC1E7 /* 10.9 */,
 				1A224C3CFF42312311CA2CB7 /* gre.c */,
+				6CE6C2851BC0657C00B49C61 /* gre_locks.h */,
+				6CE6C2841BC0657C00B49C61 /* gre_locks.c */,
 				59059266129E8B5900E567E9 /* gre_if.h */,
 				59059267129E8B5900E567E9 /* gre_if.c */,
 				59FD48C612DB38D700463FB2 /* in_gre.h */,
 				59FD48C712DB38D700463FB2 /* in_gre.c */,
+				6C200F771BC442F40089FDCA /* ip_gre.h */,
+				6C200F761BC442F40089FDCA /* ip_gre.c */,
+				6C200F731BC437CA0089FDCA /* ip6_gre.h */,
+				6C200F721BC437CA0089FDCA /* ip6_gre.c */,
 				59636A0012D993420013C8D8 /* gre_hash.h */,
 				59636A0112D993420013C8D8 /* gre_hash.c */,
+				6CAC250D1BC4560A005FA637 /* gre_ip_encap.h */,
+				6CAC250C1BC4560A005FA637 /* gre_ip_encap.c */,
 				59DA2AF312DB55DB00C2A1D9 /* gre_domain.h */,
 				59FD48C412DB358000463FB2 /* gre_domain.c */,
 				59FEBA1F12DEAA620089AA11 /* gre_ipfilter.h */,
-				59FEBA1E12DEAA620089AA11 /* gre_ipfilter.c */,
+				59FEBA1E12DEAA620089AA11 /* gre_ip4filter.c */,
+				6CAC25101BC480F6005FA637 /* gre_ip6filter.c */,
 				5993EDBE12DC8BBF00177A0C /* protosw.h */,
 				5993EDC712DC8C7B00177A0C /* domain.h */,
 				594EABD312E18C86004B211B /* route.h */,
@@ -155,7 +182,10 @@
 			files = (
 				6C1F2DEC18F2E15F002EC1E7 /* route.h in Headers */,
 				59059268129E8B5900E567E9 /* gre_if.h in Headers */,
+				6CE6C2871BC0657C00B49C61 /* gre_locks.h in Headers */,
 				59636A0212D993420013C8D8 /* gre_hash.h in Headers */,
+				6C200F791BC442F40089FDCA /* ip_gre.h in Headers */,
+				6CAC250F1BC4560A005FA637 /* gre_ip_encap.h in Headers */,
 				59FD48C812DB38D700463FB2 /* in_gre.h in Headers */,
 				59DA2AF412DB55DB00C2A1D9 /* gre_domain.h in Headers */,
 				6C1F2DF018F2E2B9002EC1E7 /* kernel_build.h in Headers */,
@@ -166,6 +196,7 @@
 				6C1F2DEA18F2E0EE002EC1E7 /* radix.h in Headers */,
 				594EABD412E18C86004B211B /* route.h in Headers */,
 				594EABDA12E190DE004B211B /* radix.h in Headers */,
+				6C200F751BC437CA0089FDCA /* ip6_gre.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -198,7 +229,7 @@
 		089C1669FE841209C02AAC07 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0450;
+				LastUpgradeCheck = 0610;
 			};
 			buildConfigurationList = 1DEB91C708733DAC0010E9CD /* Build configuration list for PBXProject "gre" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -247,7 +278,12 @@
 				59636A0312D993420013C8D8 /* gre_hash.c in Sources */,
 				59FD48C512DB358000463FB2 /* gre_domain.c in Sources */,
 				59FD48C912DB38D700463FB2 /* in_gre.c in Sources */,
-				59FEBA2012DEAA620089AA11 /* gre_ipfilter.c in Sources */,
+				6CAC250E1BC4560A005FA637 /* gre_ip_encap.c in Sources */,
+				6CE6C2861BC0657C00B49C61 /* gre_locks.c in Sources */,
+				6CAC25111BC480F6005FA637 /* gre_ip6filter.c in Sources */,
+				6C200F781BC442F40089FDCA /* ip_gre.c in Sources */,
+				6C200F741BC437CA0089FDCA /* ip6_gre.c in Sources */,
+				59FEBA2012DEAA620089AA11 /* gre_ip4filter.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -269,7 +305,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
 				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
@@ -277,13 +312,12 @@
 				GCC_MODEL_TUNING = G5;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				INFOPLIST_FILE = Info.plist;
-				INSTALL_PATH = "$(SYSTEM_LIBRARY_DIR)/Extensions";
 				MODULE_NAME = org.gmshake.nke.GRE;
 				MODULE_START = gre_start;
 				MODULE_STOP = gre_stop;
 				MODULE_VERSION = 1.0.0d1;
 				PRODUCT_NAME = GRE;
-				SDKROOT = macosx;
+				SDKROOT = macosx10.9;
 				WRAPPER_EXTENSION = kext;
 			};
 			name = Debug;
@@ -292,19 +326,17 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
 				COMBINE_HIDPI_IMAGES = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				GCC_MODEL_TUNING = G5;
 				GCC_VERSION = "";
 				INFOPLIST_FILE = Info.plist;
-				INSTALL_PATH = "$(SYSTEM_LIBRARY_DIR)/Extensions";
 				MODULE_NAME = org.gmshake.nke.GRE;
 				MODULE_START = gre_start;
 				MODULE_STOP = gre_stop;
 				MODULE_VERSION = 1.0.0d1;
 				PRODUCT_NAME = GRE;
-				SDKROOT = macosx;
+				SDKROOT = macosx10.9;
 				WRAPPER_EXTENSION = kext;
 			};
 			name = Release;
@@ -312,7 +344,6 @@
 		1DEB91C808733DAC0010E9CD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
 				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
@@ -320,20 +351,19 @@
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = "-DDEBUG";
 				PRODUCT_NAME = GRE;
-				SDKROOT = macosx;
+				SDKROOT = macosx10.9;
 			};
 			name = Debug;
 		};
 		1DEB91C908733DAC0010E9CD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
 				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_VERSION = "";
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				PRODUCT_NAME = GRE;
-				SDKROOT = macosx;
+				SDKROOT = macosx10.9;
 			};
 			name = Release;
 		};
@@ -347,7 +377,7 @@
 				1DEB91C508733DAC0010E9CD /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		1DEB91C708733DAC0010E9CD /* Build configuration list for PBXProject "gre" */ = {
 			isa = XCConfigurationList;
@@ -356,7 +386,7 @@
 				1DEB91C908733DAC0010E9CD /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
 	};

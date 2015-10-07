@@ -25,5 +25,7 @@
 
 #define PROTO_WITH_MOBILE 0
 
+#define USE_GRE_HASH 0
+
 
 #endif //_GRE_CONFIG_H

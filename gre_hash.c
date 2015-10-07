@@ -7,23 +7,22 @@
  *
  */
 
-/*
- * should include these
- */
+#if USE_GRE_HASH
+
 #include <sys/systm.h>
 #include <sys/socket.h>
 #include <net/if.h>
 #include <netinet/ip.h>
 
+#include "gre_locks.h"
 #include "gre_if.h"
 
 #define BITS 5
 /* 32 should be enough */
 #define SLOT_CNT (1 << BITS)
 
-extern lck_grp_t *gre_lck_grp;
 
-static lck_rw_t *gre_slot_lck = NULL; // protect gre_hash_slot
+static lck_rw_t *gre_hash_slot_lck = NULL; // protect gre_hash_slot
 
 static struct gre_softc *gre_hash_slot[SLOT_CNT];
 
@@ -33,12 +32,12 @@ static struct gre_softc *gre_hash_slot[SLOT_CNT];
  * gre_hash(), hash function used to get hash key
  * modified AP Hash
  */
-static inline uint32_t gre_hash(uint32_t k0, uint32_t k1, uint32_t k2)
+static inline uint32_t gre_hash(uint32_t k0, uint32_t k1)
 {
 #define BIGPRIME 1783256291
-    register uint32_t hash = BIGPRIME ^ k1;
+    register uint32_t hash = BIGPRIME;
     hash ^=   ((hash <<  7) ^ k0 ^ (hash >> 3));
-    hash ^= (~((hash << 11) ^ k2 ^ (hash >> 5)));
+    hash ^= (~((hash << 11) ^ k1 ^ (hash >> 5)));
     hash ^= hash >> 16;
     return hash;
 #undef BIGPRIME
@@ -49,7 +48,7 @@ static inline uint32_t gre_hash(uint32_t k0, uint32_t k1, uint32_t k2)
  */
 void gre_hash_lock_shared(void)
 {
-    lck_rw_lock_shared(gre_slot_lck);
+    lck_rw_lock_shared(gre_hash_slot_lck);
 }
 
 /*
@@ -57,7 +56,7 @@ void gre_hash_lock_shared(void)
  */
 void gre_hash_unlock_shared(void)
 {
-    lck_rw_unlock_shared(gre_slot_lck);
+    lck_rw_unlock_shared(gre_hash_slot_lck);
 }
 
 /*
@@ -65,7 +64,7 @@ void gre_hash_unlock_shared(void)
  */
 void gre_hash_lock_exclusive(void)
 {
-    lck_rw_lock_exclusive(gre_slot_lck);
+    lck_rw_lock_exclusive(gre_hash_slot_lck);
 }
 
 /*
@@ -73,7 +72,7 @@ void gre_hash_lock_exclusive(void)
  */
 void gre_hash_unlock_exclusive(void)
 {
-    lck_rw_unlock_exclusive(gre_slot_lck);
+    lck_rw_unlock_exclusive(gre_hash_slot_lck);
 }
 
 /*
@@ -84,15 +83,15 @@ errno_t gre_hash_init(void)
 #ifdef DEBUG
     printf("%s ...\n", __FUNCTION__);
 #endif
-    if (gre_slot_lck != NULL) {
+    if (gre_hash_slot_lck != NULL) {
 #ifdef DEBUG
         printf("%s: warnning: gre_slot_lck has already been inited\n", __FUNCTION__);
 #endif
         goto success;
     }
 
-    gre_slot_lck = lck_rw_alloc_init(gre_lck_grp, NULL);
-    if (gre_slot_lck == NULL)
+    gre_hash_slot_lck = lck_rw_alloc_init(gre_hash_lck_grp, gre_hash_lck_attributes);
+    if (gre_hash_slot_lck == NULL)
         goto failed;
 
 success:
@@ -118,7 +117,7 @@ void gre_hash_dispose(void)
     printf("%s ...\n", __FUNCTION__);
     int release_count = 0;
 #endif
-    if (gre_slot_lck == NULL) {
+    if (gre_hash_slot_lck == NULL) {
 #ifdef DEBUG
         printf("%s: warnning: gre_slot_lck has already been freed\n", __FUNCTION__);
 #endif
@@ -142,8 +141,8 @@ void gre_hash_dispose(void)
     }
     gre_hash_unlock_exclusive();
 
-    lck_rw_free(gre_slot_lck, gre_lck_grp);
-    gre_slot_lck = NULL;
+    lck_rw_free(gre_hash_slot_lck, gre_hash_lck_grp);
+    gre_hash_slot_lck = NULL;
 
 #ifdef DEBUG
     printf("%s: done, released %d total\n", __FUNCTION__, release_count);
@@ -166,8 +165,7 @@ errno_t gre_hash_add(struct gre_softc *sc)
     }
     
     uint32_t slot = gre_hash(((struct sockaddr_in *)&sc->gre_psrc)->sin_addr.s_addr, \
-                             ((struct sockaddr_in *)&sc->gre_pdst)->sin_addr.s_addr, \
-                             sc->encap_proto) & (SLOT_CNT - 1);
+                             ((struct sockaddr_in *)&sc->gre_pdst)->sin_addr.s_addr) & (SLOT_CNT - 1);
 #ifdef DEBUG
     printf("%s: slot -> %u\n", __FUNCTION__, slot);
 #endif
@@ -182,7 +180,7 @@ errno_t gre_hash_add(struct gre_softc *sc)
     }
 
     // NOT FOUND
-    gre_sc_reference(sc); /* here, we increase the ref of sc, indicates that it's in hash table */
+    gre_sc_reference(sc); /* keep retains of sc in hash table */
 
     sc->pcb_next = gre_hash_slot[slot];
     gre_hash_slot[slot] = sc;
@@ -208,8 +206,7 @@ errno_t gre_hash_delete(struct gre_softc *sc)
     }
 
     uint32_t slot = gre_hash(((struct sockaddr_in *)&sc->gre_psrc)->sin_addr.s_addr, \
-                             ((struct sockaddr_in *)&sc->gre_pdst)->sin_addr.s_addr, \
-                             sc->encap_proto) & (SLOT_CNT - 1);
+                             ((struct sockaddr_in *)&sc->gre_pdst)->sin_addr.s_addr) & (SLOT_CNT - 1);
 #ifdef DEBUG
     printf("%s: slot -> %u\n", __FUNCTION__, slot);
 #endif
@@ -269,17 +266,16 @@ notfound:
  * on success, we add reference count of sc
  * do remember to unref sc
  */
-struct gre_softc * gre_hash_find(struct in_addr src, struct in_addr dst, u_int8_t proto)
+struct gre_softc * gre_hash_find(struct in_addr src, struct in_addr dst)
 {
-    uint32_t slot = gre_hash(src.s_addr, dst.s_addr, proto) & (SLOT_CNT - 1);
+    uint32_t slot = gre_hash(src.s_addr, dst.s_addr) & (SLOT_CNT - 1);
 #ifdef DEBUG
     printf("%s: slot -> %u\n", __FUNCTION__, slot);
 #endif
 
     for (struct gre_softc *sc = gre_hash_slot[slot]; sc != NULL; sc = sc->pcb_next) {
         if (in_hosteq(src, ((struct sockaddr_in *)&sc->gre_psrc)->sin_addr) && \
-            in_hosteq(dst, ((struct sockaddr_in *)&sc->gre_pdst)->sin_addr) && \
-            sc->encap_proto == proto) {
+            in_hosteq(dst, ((struct sockaddr_in *)&sc->gre_pdst)->sin_addr)) {
 
             gre_sc_reference(sc);
 
@@ -297,3 +293,5 @@ notfound:
 #endif
     return NULL;
 }
+
+#endif

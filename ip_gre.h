@@ -1,15 +1,13 @@
-/*
- *  in_gre.c
- *  gre
- *
- *  Created by Summer Town on 1/10/11.
- *  Copyright 2011 __MyCompanyName__. All rights reserved.
- *
- */
-/*      $NetBSD: ip_gre.c,v 1.29 2003/09/05 23:02:43 itojun Exp $ */
-
+//
+//  ip_gre.h
+//  gre
+//
+//  Created by Zhenlei Huang on 10/7/15.
+//
+//
 /*-
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
+ * Copyright (c) 2014 Andrey V. Elsukov <ae@FreeBSD.org>
  * All rights reserved.
  *
  * This code is derived from software contributed to The NetBSD Foundation
@@ -25,13 +23,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD
- *        Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -44,5 +35,19 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $NetBSD: ip_gre.c,v 1.29 2003/09/05 23:02:43 itojun Exp $
  */
 
+#ifndef _IP_GRE_H
+#define _IP_GRE_H
+
+#include <sys/sysctl.h>
+
+extern struct sysctl_oid sysctl__net_gre_ttl;
+
+errno_t in_gre_output(mbuf_t m, int af, int hlen);
+
+int in_gre_attach(struct gre_softc *sc);
+
+#endif
