@@ -249,7 +249,6 @@ gre_proto_unregister(void)
 }
 
 
-/* gre_if_init */
 int
 gre_if_init(void)
 {
@@ -364,9 +363,9 @@ ebusy:
 	return EBUSY;
 }
 
+
 /*
- * gre_attach(), attach a new interface
- * sc->sc_refcnt is increase by 1
+ * gre_if_attach(), attach a new interface
  */
 int
 gre_if_attach(void)
@@ -580,7 +579,7 @@ gre_sc_allocate(u_int32_t unit)
 	bpfattach(ifp, DLT_NULL, sizeof(u_int32_t));
 
 #ifdef DEBUG
-	printf("%s: sc -> %p, ifp -> %p\n", __FUNCTION__, sc, ifp);
+	printf("%s: %s%d sc -> %p, ifp -> %p\n", __FUNCTION__, GRENAME, unit, sc, ifp);
 #endif
 	return sc;
 }
@@ -674,6 +673,30 @@ gre_sc_free(struct gre_softc *sc)
 
 #ifdef DEBUG
 	printf("%s: done\n", __FUNCTION__);
+#endif
+}
+
+
+/*
+ * gre_if_detached() is called when ifp detaching is done,
+ * then it is safe to call ifnet_release()
+ */
+static void
+gre_if_detached(ifnet_t ifp)
+{
+#ifdef DEBUG
+	printf("%s: %s%d ...\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp));
+#endif
+	struct gre_softc *sc = ifnet_softc(ifp);
+	lck_mtx_lock(sc->detach_mtx);
+	if (sc->is_detaching) {
+		sc->is_detaching = 0;
+		wakeup(&sc->is_detaching);
+	}
+	lck_mtx_unlock(sc->detach_mtx);
+
+#ifdef DEBUG
+	printf("%s: detach done\n", __FUNCTION__);
 #endif
 }
 
@@ -1202,38 +1225,6 @@ gre_delete_tunnel(ifnet_t ifp)
 }
 
 
-
-/*
- * gre_if_free() is called when ifp detaching is done,
- * then it is safe to call ifnet_release()
- */
-static void
-gre_if_detached(ifnet_t ifp)
-{
-#ifdef DEBUG
-	printf("%s: %s%d ...\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp));
-#endif
-	struct gre_softc* sc = ifnet_softc(ifp);
-	lck_mtx_lock(sc->detach_mtx);
-	if (sc->is_detaching) {
-		sc->is_detaching = 0;
-		wakeup(&sc->is_detaching);
-	}
-	lck_mtx_unlock(sc->detach_mtx);
-
-#ifdef DEBUG
-	printf("%s: detach done\n", __FUNCTION__);
-#endif
-}
-
-
-
-/*
- * Decapsulate. Does the real work and is called from in_gre_input()
- * (above) or ipv4_infilter(), Returns an mbuf back if packet is not
- * yet processed, and NULL if it needs no further processing.
- * proto is the protocol number of the "calling" foo_input() routine.
- */
 void
 gre_input(mbuf_t *mp, int *offp, int proto, void *arg)
 {
@@ -1243,7 +1234,8 @@ gre_input(mbuf_t *mp, int *offp, int proto, void *arg)
 	mbuf_t m;
 	uint32_t *opts, key;
 	uint16_t flags;
-	int hlen, af;
+	int hlen;
+	uint32_t af;
 
 	m = *mp;
 //	sc = gre_encap_getarg(m); // HACK: we use arg directly
@@ -1421,6 +1413,7 @@ gre_demux(ifnet_t ifp, mbuf_t m, char *frame_header, protocol_family_t *protocol
 	return 0;
 }
 
+
 /*
  * gre_media_input is the input handler for IP and IPv6 attached to gre,
  * our caller dlil_ifproto_input() will free the mbuf chain if any
@@ -1436,9 +1429,8 @@ gre_media_input(__unused ifnet_t ifp, protocol_family_t protocol, mbuf_t m,
 
 	errno_t err = proto_input(protocol, m);
 #ifdef DEBUG
-	if (err) {
+	if (err)
 		printf("%s: warnning: proto_input() error: 0x%x\n", __FUNCTION__, err);
-	}
 #endif
 
 	return err;
@@ -1511,10 +1503,7 @@ gre_setseqn(struct grehdr *gh, uint32_t seq)
 	*opts = htonl(seq);
 }
 
-/*
- * The output routine. Takes a packet and encapsulates it in the protocol
- * given by sc->encap_proto. See also RFC 1701 and RFC 2004
- */
+
 static errno_t
 gre_output(ifnet_t ifp, mbuf_t m) //, struct sockaddr *dst)
 {
@@ -1666,18 +1655,3 @@ gre_check_nesting(ifnet_t ifp, mbuf_t m)
 	*data = ifp;
 	return 0;
 }
-#undef	MTAG_GRE
-
-
-/*
- * computes a route to our destination that is not the one
- * which would be taken by ip_output(), as this one will loop back to
- * us. If the interface is p2p as  a--->b, then a routing entry exists
- * If we now send a packet to b (e.g. ping b), this will come down here
- * gets src=a, dst=b tacked on and would from ip_output() sent back to
- * if_gre.
- * Goal here is to compute a route to b that is less specific than
- * a-->b. We know that this one exists as in normal operation we have
- * at least a default route which matches.
- */
-

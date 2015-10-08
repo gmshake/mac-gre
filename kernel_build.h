@@ -6,8 +6,8 @@
 //
 //
 
-#ifndef gre_kernel_build_h
-#define gre_kernel_build_h
+#ifndef _GRE_KERNEL_BUILD_H
+#define _GRE_KERNEL_BUILD_H
 
 
 /*
