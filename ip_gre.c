@@ -53,17 +53,16 @@
 
 #include <netinet/kpi_ipfilter.h>
 
-#include "ip_gre.h"
-#include "gre_if.h"
+#include "kernel_build.h"
 #include "gre_ip_encap.h"
+#include "gre_if.h"
 
 
-#define	GRE_TTL			30
+#define	GRE_TTL 30
 static int ip_gre_ttl = GRE_TTL;
 
 SYSCTL_DECL(_net_gre);
 SYSCTL_INT(_net_gre, OID_AUTO, ttl, CTLTYPE_INT | CTLFLAG_RW, &ip_gre_ttl, 0, "");
-
 
 
 static int
@@ -105,9 +104,10 @@ bad:
 
 /*
  * generate a random ip id
- * FIXME random is not RANDOM
+ * FIXME: random is not RANDOM
  */
-static inline u_int16_t gre_ip_randomid(void)
+static inline u_int16_t
+gre_ip_randomid(void)
 {
 	return (u_int16_t)(random() & 0xffff);
 }
@@ -145,7 +145,7 @@ in_gre_output(mbuf_t m, int af, int hlen)
 
 	/* ipf_inject_output() will always free the mbuf */
 	/* Put ip_len and ip_off in network byte order, ipf_inject_output expects that */
-	// FIXME
+	// FIXME: ip_off ?
 #if BYTE_ORDER != BIG_ENDIAN
 	//struct ip *ip = mbuf_data(m);
 	//HTONS(ip->ip_len);
@@ -161,7 +161,6 @@ in_gre_output(mbuf_t m, int af, int hlen)
 errno_t
 in_gre_attach(struct gre_softc *sc)
 {
-
 	KASSERT(sc->gre_ecookie == NULL, ("gre_ecookie isn't NULL"));
 	sc->gre_ecookie = (void *)gre_encap_attach_func(AF_INET, IPPROTO_GRE,
 					    in_gre_encapcheck, gre_input, sc);

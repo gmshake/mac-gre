@@ -7,8 +7,8 @@
  *
  */
 
-#ifndef _GRE_PCB_H
-#define _GRE_PCB_H
+#ifndef _GRE_HASH_H
+#define _GRE_HASH_H
 
 #if USE_GRE_HASH
 struct gre_softc;

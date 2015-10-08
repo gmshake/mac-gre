@@ -8,32 +8,29 @@
  */
 
 #include <sys/systm.h>
-#include <sys/kpi_mbuf.h>
-//#include <sys/socket.h>
 
-//#include <net/if.h>
-//#include <net/ethernet.h>
-
-//#include <netinet/in.h>
 #include <netinet/kpi_ipfilter.h>
 
-#include "gre_ipfilter.h"
+
 #include "gre_locks.h"
-#include "gre_if.h"
 #include "gre_ip_encap.h"
+#include "gre_if.h"
+#include "gre_ipfilter.h"
+
+
+static errno_t gre_ip6filter_attach(void);
+static errno_t gre_ip6filter_detach(void);
+static errno_t gre_ipv6_infilter(void *, mbuf_t *, int, u_int8_t);
 
 
 static lck_mtx_t *gre_ip6f_mtx = NULL;
 static ipfilter_t gre_ipv6filter = NULL;
 
-static errno_t gre_ip6filter_attach(void);
-static errno_t gre_ip6filter_detach(void);
-
 
 /*
  * gre_ipfilter_init(), initialize resources required by ip filter
  */
-errno_t
+int
 gre_ip6filter_init(void)
 {
 #ifdef DEBUG
@@ -74,7 +71,7 @@ failed:
 /*
  * gre_ipfilter_dispose(), the opposite to gre_ipfilter_init(), ie clean up
  */
-errno_t
+int
 gre_ip6filter_dispose(void)
 {
 #ifdef DEBUG
@@ -101,41 +98,6 @@ gre_ip6filter_dispose(void)
 	printf("%s: error dispose ipfilter\n", __FUNCTION__);
 #endif
 	return -1;
-}
-
-
-
-/* the caller who call this function(ipv6_infilter) will free the mbuf when
- * it returns any error except EJUSTRETURN.
- * so, remember to check the function called by this function if it frees
- * the mbuf chain on error. That is, do remember return EJUSTRETURN
- * if you frees the mbuf or the function called by this function frees the mbuf.
- * Otherwise, DOUBLE FREE, causing kernel panic...
- *
- * return ZERO if this filter is not interested in the packet
- * otherwise, it means this filter deal with the packet, and other filters will
- * not see this packet
- *
- * @param cookie
- * @param m
- * @param offset    ip header offset
- * @param protocol  proto, IPPROTO_GRE/IPPROTO_MOBILE
- */
-static errno_t
-gre_ipv6_infilter(void *cookie, mbuf_t *data, int offset, u_int8_t protocol)
-{
-	errno_t error;
-
-	error = gre_encap6_input(data, &offset, protocol);
-
-
-	if (error && error != EJUSTRETURN) {
-#if DEBUG
-		printf("%s invalid return value: %d\n", __FUNCTION__, error);
-#endif
-		error = EJUSTRETURN; // FIXIT
-	}
-	return error;
 }
 
 
@@ -213,4 +175,38 @@ gre_ip6filter_detach(void)
 	printf("%s: done\n", __FUNCTION__);
 #endif
 	return err;
+}
+
+
+/* the caller who call this function(ipv6_infilter) will free the mbuf when
+ * it returns any error except EJUSTRETURN.
+ * so, remember to check the function called by this function if it frees
+ * the mbuf chain on error. That is, do remember return EJUSTRETURN
+ * if you frees the mbuf or the function called by this function frees the mbuf.
+ * Otherwise, DOUBLE FREE, causing kernel panic...
+ *
+ * return ZERO if this filter is not interested in the packet
+ * otherwise, it means this filter deal with the packet, and other filters will
+ * not see this packet
+ *
+ * @param cookie
+ * @param m
+ * @param offset    ip header offset
+ * @param protocol  proto, IPPROTO_GRE/IPPROTO_MOBILE
+ */
+static errno_t
+gre_ipv6_infilter(void *cookie, mbuf_t *data, int offset, u_int8_t protocol)
+{
+	errno_t error;
+
+	error = gre_encap6_input(data, &offset, protocol);
+
+
+	if (error && error != EJUSTRETURN) {
+#if DEBUG
+		printf("%s invalid return value: %d\n", __FUNCTION__, error);
+#endif
+		error = EJUSTRETURN; // FIXIT
+	}
+	return error;
 }

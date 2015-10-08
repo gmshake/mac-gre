@@ -6,6 +6,63 @@
 //
 //
 
+/*	$KAME: ip_encap.c,v 1.41 2001/03/15 08:35:08 itojun Exp $	*/
+
+/*-
+ * Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the project nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE PROJECT AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE PROJECT OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+/*
+ * My grandfather said that there's a devil inside tunnelling technology...
+ *
+ * We have surprisingly many protocols that want packets with IP protocol
+ * #4 or #41.  Here's a list of protocols that want protocol #41:
+ *	RFC1933 configured tunnel
+ *	RFC1933 automatic tunnel
+ *	RFC2401 IPsec tunnel
+ *	RFC2473 IPv6 generic packet tunnelling
+ *	RFC2529 6over4 tunnel
+ *	mobile-ip6 (uses RFC2473)
+ *	RFC3056 6to4 tunnel
+ *	isatap tunnel
+ * Here's a list of protocol that want protocol #4:
+ *	RFC1853 IPv4-in-IPv4 tunnelling
+ *	RFC2003 IPv4 encapsulation within IPv4
+ *	RFC2344 reverse tunnelling for mobile-ip4
+ *	RFC2401 IPsec tunnel
+ * Well, what can I say.  They impose different en/decapsulation mechanism
+ * from each other, so they need separate protocol handler.  The only one
+ * we can easily determine by protocol # is IPsec, which always has
+ * AH/ESP/IPComp header right after outer IP header.
+ *
+ * So, clearly good old protosw does not work for protocol #4 and #41.
+ * The code will let you match protocol via src/dst address pair.
+ */
+/* XXX is M_NETADDR correct? */
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -13,46 +70,37 @@
 #include <sys/sockio.h>
 #include <sys/mbuf.h>
 #include <sys/errno.h>
-#include <sys/protosw.h>
 #include <sys/queue.h>
 
 #include <net/if.h>
-#include <net/route.h>
 
 #include <netinet/in.h>
-#include <netinet/in_systm.h>
 #include <netinet/ip.h>
-#include <netinet/ip_var.h>
-#include <netinet/ip_mroute.h>
-
 #include <netinet/ip6.h>
 
-
 #include "kernel_build.h"
-#include "gre_ip_encap.h"
 #include "gre_locks.h"
+#include "gre_ip_encap.h"
 
-
-LIST_HEAD(, gre_encaptab) gre_encaptab = LIST_HEAD_INITIALIZER(&gre_encaptab);
 
 #define GRE_MODULE_TAG_ENCAT "org.gmshake.nke.gre_encaptab"
-static mbuf_tag_id_t gre_module_tag_id;
-
-#define GRE_MODULE_TAG_ID gre_module_tag_id
 #define GRE_TAG_TYPE_ENCAP 0
-
-
-static lck_rw_t *gre_encap_lck;
 
 
 static void gre_encap_add(struct gre_encaptab *);
 static int gre_mask_match(const struct gre_encaptab *, const struct sockaddr *,
-		      const struct sockaddr *);
-
+			  const struct sockaddr *);
 static void gre_encap_fillarg(mbuf_t, void *);
 
 
-errno_t
+static LIST_HEAD(, gre_encaptab) gre_encaptab = LIST_HEAD_INITIALIZER(&gre_encaptab);
+static lck_rw_t *gre_encap_lck;
+
+static mbuf_tag_id_t gre_module_tag_id;
+#define GRE_MODULE_TAG_ID gre_module_tag_id
+
+
+int
 gre_encap_init(void)
 {
 #ifdef DEBUG
@@ -90,7 +138,8 @@ gre_encap_init(void)
 	return 0;
 }
 
-errno_t
+
+int
 gre_encap_dispose(void)
 {
 #ifdef DEBUG
@@ -213,7 +262,6 @@ gre_encap4_input(mbuf_t m, int off)
 
 	return 0; // not interested
 }
-
 
 
 int

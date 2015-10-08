@@ -9,14 +9,7 @@
 #ifndef gre_kernel_build_h
 #define gre_kernel_build_h
 
-/* fix NKE building */
-#ifndef PRIVATE
-#define PRIVATE 1
-#endif
 
-#ifndef BSD_KERNEL_PRIVATE
-#define BSD_KERNEL_PRIVATE 1
-#endif
 /*
 #ifndef in_cksum_skip
 #define in_cksum_skip(m, l, o)  inet_cksum(m, 0, o, (l) - (o))
@@ -38,6 +31,35 @@
 #define mtodo(m, o)     ((void *)(mbuf_data(m) + (o)))
 #define m_adj(m, l)	(mbuf_adj(m, l))
 #define m_freem(m)	(mbuf_freem(m))
+
+
+
+/*
+ * usefull macro
+ */
+#ifndef in_hosteq
+#define in_hosteq(s, t) ((s).s_addr == (t).s_addr)
+#endif
+
+#ifndef satosin
+#define satosin(sa)     ((struct sockaddr_in *)(sa))
+#endif
+
+#ifndef sintosa
+#define sintosa(sin)    ((struct sockaddr *)(sin))
+#endif
+
+#ifndef SIN6
+#define SIN6(s)         ((struct sockaddr_in6 *)(void *)s)
+#endif
+
+#ifndef satosin6
+#define satosin6(sa)    SIN6(sa)
+#endif
+
+#ifndef sin6tosa
+#define sin6tosa(sin6)  ((struct sockaddr *)(void *)(sin6))
+#endif
 
 
 /*

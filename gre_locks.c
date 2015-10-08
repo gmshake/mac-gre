@@ -10,20 +10,24 @@
 #include <sys/lock.h>
 
 
+void gre_locks_dispose(void);
+
+
 static lck_grp_attr_t	*gre_grp_attributes;
 
 lck_grp_t	*gre_lck_grp;
+#if USE_GRE_HASH
 lck_grp_t	*gre_hash_lck_grp;
+#endif
 lck_grp_t	*gre_ipf_lck_grp;
 lck_grp_t	*gre_sc_lck_grp;
 
 lck_attr_t	*gre_lck_attributes;
+#if USE_GRE_HASH
 lck_attr_t	*gre_hash_lck_attributes;
+#endif
 lck_attr_t	*gre_ipf_lck_attributes;
 lck_attr_t	*gre_sc_lck_attributes;
-
-
-void gre_locks_dispose(void);
 
 
 int
@@ -45,12 +49,14 @@ gre_locks_init(void)
 		goto error;
 	}
 
+#if USE_GRE_HASH
 	/* global gre hash lock group */
 	gre_hash_lck_grp = lck_grp_alloc_init("GRE hash lock group", gre_grp_attributes);
 	if (!gre_hash_lck_grp) {
 		printf("%s: lck_grp_alloc_init() failed\n", __FUNCTION__);
 		goto error;
 	}
+#endif
 
 	/* ipfilter gre hash lock group */
 	gre_ipf_lck_grp = lck_grp_alloc_init("GRE ipfilter lock group", gre_grp_attributes);
@@ -73,11 +79,13 @@ gre_locks_init(void)
 		goto error;
 	}
 
+#if USE_GRE_HASH
 	gre_hash_lck_attributes = lck_attr_alloc_init();
 	if (!gre_hash_lck_attributes) {
 		printf("%s: lck_attr_alloc_init() failed\n", __FUNCTION__);
 		goto error;
 	}
+#endif
 
 	gre_ipf_lck_attributes = lck_attr_alloc_init();
 	if (!gre_ipf_lck_attributes) {
@@ -123,10 +131,12 @@ gre_locks_dispose(void)
 		gre_ipf_lck_attributes = LCK_ATTR_NULL;
 	}
 
+#if USE_GRE_HASH
 	if (gre_hash_lck_attributes) {
 		lck_attr_free(gre_hash_lck_attributes);
 		gre_hash_lck_attributes = LCK_ATTR_NULL;
 	}
+#endif
 
 	if (gre_lck_attributes) {
 		lck_attr_free(gre_lck_attributes);
@@ -143,10 +153,12 @@ gre_locks_dispose(void)
 		gre_ipf_lck_grp = (lck_grp_t *)0;
 	}
 
+#if USE_GRE_HASH
 	if (gre_hash_lck_grp) {
 		lck_grp_free(gre_hash_lck_grp);
 		gre_hash_lck_grp = (lck_grp_t *)0;
 	}
+#endif
 
 	if (gre_lck_grp) {
 		lck_grp_free(gre_lck_grp);

@@ -34,20 +34,14 @@
 #ifndef _NET_IF_GRE_H
 #define _NET_IF_GRE_H
 
-
 #include <libkern/OSTypes.h>
-#include <sys/systm.h>
-#include <sys/appleapiopts.h>
-
-#include <net/kpi_interface.h>
+#include <sys/types.h>
 
 #include <netinet/in.h>
 #include <netinet/ip.h>
-
 #include <netinet/ip6.h>
 
-
-#include "gre_config.h"
+#include "gre_ip_encap.h"
 
 
 /* GRE header according to RFC 2784 and RFC 2890 */
@@ -72,52 +66,28 @@ struct greip6 {
 } __attribute__((__packed__));
 
 
-/*
- * Version of the WCCP, need to be configured manually since
- * header for version 2 is the same but IP payload is prepended
- * with additional 4-bytes field.
- */
-//typedef enum {
-//	WCCP_V1 = 0,
-//	WCCP_V2
-//} wccp_ver_t;
-
 struct gre_softc {
-	ifnet_t             gre_ifp;
-	//struct gre_softc        *pcb_next;
-	TAILQ_ENTRY(gre_softc)  gre_list;
+	ifnet_t			gre_ifp;
+	LIST_ENTRY(gre_softc)	gre_list;
 	lck_rw_t		*gre_lock;
-	volatile SInt32		sc_refcnt;  /* reference count */
-	lck_mtx_t           *mtx;	/* interface mutex */
-
-	void*		gre_ecookie;
-	int		gre_family;	/* AF of delivery header */
-	uint32_t	gre_iseq;
-	uint32_t	gre_oseq;
-	uint32_t	gre_key;	/* key included in outgoing GRE packets */  /* zero means none */
-	uint32_t	gre_options;
-	uint32_t	gre_mtu;
-	u_int		gre_hlen;	/* header size */
-
+	int			gre_family;	/* AF of delivery header */
+	uint32_t		gre_iseq;
+	uint32_t		gre_oseq;
+	uint32_t		gre_key;
+	uint32_t		gre_options;
+	uint32_t		gre_mtu;
+	u_int			gre_hlen;	/* header size */
 	union {
 		void		*hdr;
 		struct greip	*gihdr;
 		struct greip6	*gi6hdr;
 	} gre_uhdr;
+	const struct gre_encaptab *gre_ecookie;
 
-//	struct sockaddr gre_psrc; /* Physical src addr */
-//	struct sockaddr gre_pdst; /* Physical dst addr */
-
-	uint16_t   is_detaching;	/* state of the interface */
-
-	//	uint32_t    called;		/* infinite recursion preventer */
-
-//	wccp_ver_t  wccp_ver;	/* version of the WCCP */
-
-
-#if USE_IP_OUTPUT
-	struct route route;   /* route used for ip_output */
-#endif
+	// for darwin
+	lck_mtx_t		*detach_mtx;	/* interface state mutex */
+	u_int			is_detaching;	/* state of the interface */
+	volatile SInt32		sc_refcnt;	/* reference count */
 };
 
 //#define	GRE2IFP(sc)		((sc)->gre_ifp)
@@ -135,20 +105,6 @@ struct gre_softc {
 #define	gre_gi6hdr		gre_uhdr.gi6hdr
 #define	gre_oip			gre_gihdr->gi_ip
 #define	gre_oip6		gre_gi6hdr->gi6_ip6
-
-/*
-#define gi_ver      gi_i.ip_v
-#define gi_hlen     gi_i.ip_hl
-#define gi_pr		gi_i.ip_p
-#define gi_len		gi_i.ip_len
-#define gi_src		gi_i.ip_src
-#define gi_dst		gi_i.ip_dst
-#define gi_sum      gi_i.ip_sum
-
-#define gi_ptype	gi_g.ptype
-#define gi_flags	gi_g.flags
-#define gi_options	gi_g.options
-*/
 
 
 /*
@@ -175,51 +131,22 @@ struct gre_softc {
 #define	GRE_ENABLE_SEQ		0x0002
 #define	GRE_OPTMASK		(GRE_ENABLE_CSUM|GRE_ENABLE_SEQ)
 
-/*
- * usefull macro
- */
-#ifndef in_hosteq
-#define in_hosteq(s, t) ((s).s_addr == (t).s_addr)
-#endif
 
-#ifndef satosin
-#define satosin(sa)     ((struct sockaddr_in *)(sa))
-#endif
+extern void	gre_sc_reference(struct gre_softc *);
+extern SInt32	gre_sc_release(struct gre_softc *);
 
-#ifndef sintosa
-#define sintosa(sin)    ((struct sockaddr *)(sin))
-#endif
+extern int	gre_proto_register(void);
+extern void	gre_proto_unregister(void);
 
-#ifndef SIN6
-#define SIN6(s)         ((struct sockaddr_in6 *)(void *)s)
-#endif
-
-#ifndef satosin6
-#define satosin6(sa)    SIN6(sa)
-#endif
-
-#ifndef sin6tosa
-#define sin6tosa(sin6)  ((struct sockaddr *)(void *)(sin6))
-#endif
-
-
-extern void gre_sc_reference(struct gre_softc *sc);
-extern void gre_sc_release(struct gre_softc *sc);
-
-extern int gre_proto_register(void);
-extern void gre_proto_unregister(void);
-
-extern int gre_if_init(void);
-extern int gre_if_dispose(void);
-extern int gre_if_attach(void);
-
-//extern uint16_t    gre_in_cksum(uint16_t *p, u_int len);
+extern int	gre_if_init(void);
+extern int	gre_if_dispose(void);
+extern int	gre_if_attach(void);
 
 extern void	gre_input(mbuf_t *, int *, int, void *);
 
-/*
-extern struct gre_softc * gre_softc_search4(in_addr_t src, in_addr_t dst);
-extern struct gre_softc * gre_softc_search6(struct in6_addr src, struct in6_addr dst);
-*/
+extern errno_t	in_gre_output(mbuf_t, int, int);
+extern errno_t	in_gre_attach(struct gre_softc *);
+extern errno_t	in6_gre_output(mbuf_t, int, int);
+extern errno_t	in6_gre_attach(struct gre_softc *);
 
 #endif

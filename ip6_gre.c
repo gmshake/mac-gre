@@ -45,15 +45,15 @@
 
 #include <netinet/kpi_ipfilter.h>
 
-#include "ip6_gre.h"
-#include "gre_if.h"
+#include "kernel_build.h"
 #include "gre_ip_encap.h"
+#include "gre_if.h"
+
 
 static int ip6_gre_hlim = IPV6_DEFHLIM;
 
 SYSCTL_DECL(_net_gre);
 SYSCTL_INT(_net_gre, OID_AUTO, hlim, CTLTYPE_INT | CTLFLAG_RW, &ip6_gre_hlim, 0, "Default hop limit for encapsulated packets");
-
 
 
 static int
@@ -115,7 +115,6 @@ in6_gre_output(mbuf_t m, int af, int hlen)
 errno_t
 in6_gre_attach(struct gre_softc *sc)
 {
-
 	KASSERT(sc->gre_ecookie == NULL, ("gre_ecookie isn't NULL"));
 	sc->gre_ecookie = (void *)gre_encap_attach_func(AF_INET6, IPPROTO_GRE,
 					    in6_gre_encapcheck, gre_input, sc);

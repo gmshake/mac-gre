@@ -11,10 +11,14 @@
 #include <sys/kernel.h>
 
 #include "gre_locks.h"
-#include "gre_ipfilter.h"
-#include "gre_hash.h"
-#include "gre_if.h"
 #include "gre_ip_encap.h"
+
+#if USE_GRE_HASH
+#include "gre_hash.h"
+#endif
+
+#include "gre_if.h"
+#include "gre_ipfilter.h"
 
 
 static int gre_init;
@@ -83,7 +87,8 @@ failed:
 }
 
 
-kern_return_t gre_stop(kmod_info_t *ki, void *data)
+kern_return_t
+gre_stop(kmod_info_t *ki, void *data)
 {
 #ifdef DEBUG
 	printf("%s ...\n", __FUNCTION__);
