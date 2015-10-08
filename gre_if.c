@@ -579,6 +579,9 @@ gre_sc_allocate(u_int32_t unit)
 
 	bpfattach(ifp, DLT_NULL, sizeof(u_int32_t));
 
+#ifdef DEBUG
+	printf("%s: sc -> %p, ifp -> %p\n", __FUNCTION__, sc, ifp);
+#endif
 	return sc;
 }
 
@@ -1243,14 +1246,14 @@ gre_input(mbuf_t *mp, int *offp, int proto, void *arg)
 	int hlen, af;
 
 	m = *mp;
-	//sc = gre_encap_getarg(m);
+//	sc = gre_encap_getarg(m); // HACK: we use arg directly
+//	if (sc == NULL) {
+//#ifdef DEBUG
+//		printf("%s sc is NULL, drop\n", __FUNCTION__);
+//#endif
+//		goto drop1;
+//	}
 	sc = (struct gre_softc *)arg;
-#ifdef DEBUG
-	if (sc == NULL) {
-		printf("%s sc is NULL, drop\n", __FUNCTION__);
-		goto drop1;
-	}
-#endif
 
 	ifp = sc->gre_ifp;
 	gh = (struct grehdr *)mtodo(m, *offp);
@@ -1678,19 +1681,3 @@ gre_check_nesting(ifnet_t ifp, mbuf_t m)
  * at least a default route which matches.
  */
 
-#ifdef DEBUG
-unsigned int get_ngre() {
-	return ngre;
-}
-#endif
-
-#ifdef DEBUG
-static char *
-ip_print(const struct in_addr *in)
-{
-	static char buff[32];
-	uint32_t addr = ntohl(in->s_addr);
-	snprintf(buff, sizeof(buff), "%u.%u.%u.%u", addr >> 24, (addr >> 16) & 0xff, (addr >> 8) & 0xff, (addr) & 0xff);
-	return buff;
-}
-#endif

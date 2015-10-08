@@ -106,28 +106,15 @@ gre_stop(kmod_info_t *ki, void *data)
 		goto failed;
 	}
 
-#ifdef DEBUG
-	extern unsigned int get_ngre();
-	printf("%s: before gre_dispose, current ngre = %d\n", __FUNCTION__, get_ngre());
-#endif
-
 	if (gre_if_dispose()) {
 		printf("gre: gre_dispose error\n");
 		goto failed;
 	}
 
-#ifdef DEBUG
-	printf("%s: before gre_hash_dispose, current ngre = %d\n", __FUNCTION__, get_ngre());
-#endif
-
 	gre_proto_unregister();
 
 #if USE_GRE_HASH
 	gre_hash_dispose();
-#endif
-
-#ifdef DEBUG
-	printf("%s: current ngre = %d\n", __FUNCTION__, get_ngre());
 #endif
 
 	if (gre_encap_dispose()) {
