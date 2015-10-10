@@ -486,14 +486,10 @@ gre_cleanup_family(ifnet_t ifp, protocol_family_t af)
 		gre_remove_address(ifp, af, addrs[i], sock);
 	}
 	ifnet_free_address_list(addrs);
-	addrs = NULL;
 
 cleanup:
 	if (sock != NULL)
 		sock_close(sock);
-
-	if (addrs != NULL)
-		ifnet_free_address_list(addrs);
 #ifdef DEBUG
 	printf("%s (%s%d, %d) done\n", __FUNCTION__, ifnet_name(ifp), ifnet_unit(ifp), af);
 #endif
