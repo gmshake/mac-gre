@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		32A4FEBC0562C75700D090E7 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C167DFE841241C02AAC07 /* InfoPlist.strings */; };
 		32A4FEBE0562C75700D090E7 /* gre.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A224C3CFF42312311CA2CB7 /* gre.c */; settings = {ATTRIBUTES = (); }; };
 		59059268129E8B5900E567E9 /* gre_if.h in Headers */ = {isa = PBXBuildFile; fileRef = 59059266129E8B5900E567E9 /* gre_if.h */; };
 		59059269129E8B5900E567E9 /* gre_if.c in Sources */ = {isa = PBXBuildFile; fileRef = 59059267129E8B5900E567E9 /* gre_if.c */; };
@@ -26,7 +25,6 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		089C167EFE841241C02AAC07 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		1A224C3CFF42312311CA2CB7 /* gre.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gre.c; sourceTree = "<group>"; };
 		32A4FEC30562C75700D090E7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		32A4FEC40562C75800D090E7 /* GRE.kext */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GRE.kext; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -79,7 +77,6 @@
 			isa = PBXGroup;
 			children = (
 				32A4FEC30562C75700D090E7 /* Info.plist */,
-				089C167DFE841241C02AAC07 /* InfoPlist.strings */,
 			);
 			name = Resources;
 			sourceTree = "<group>";
@@ -194,7 +191,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				32A4FEBC0562C75700D090E7 /* InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -229,33 +225,17 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
-/* Begin PBXVariantGroup section */
-		089C167DFE841241C02AAC07 /* InfoPlist.strings */ = {
-			isa = PBXVariantGroup;
-			children = (
-				089C167EFE841241C02AAC07 /* English */,
-			);
-			name = InfoPlist.strings;
-			sourceTree = "<group>";
-		};
-/* End PBXVariantGroup section */
-
 /* Begin XCBuildConfiguration section */
 		1DEB91C408733DAC0010E9CD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				COMBINE_HIDPI_IMAGES = YES;
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_MODEL_TUNING = G5;
-				GCC_OPTIMIZATION_LEVEL = 0;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				INFOPLIST_FILE = Info.plist;
 				MODULE_NAME = org.gmshake.nke.GRE;
 				MODULE_START = gre_start;
 				MODULE_STOP = gre_stop;
-				MODULE_VERSION = 1.0.0d1;
+				MODULE_VERSION = 2.0d1;
 				PRODUCT_NAME = GRE;
 				SDKROOT = macosx10.9;
 				WRAPPER_EXTENSION = kext;
@@ -266,15 +246,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				COMBINE_HIDPI_IMAGES = YES;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				GCC_MODEL_TUNING = G5;
-				GCC_VERSION = "";
 				INFOPLIST_FILE = Info.plist;
 				MODULE_NAME = org.gmshake.nke.GRE;
 				MODULE_START = gre_start;
 				MODULE_STOP = gre_stop;
-				MODULE_VERSION = 1.0.0d1;
+				MODULE_VERSION = 2.0.0;
 				PRODUCT_NAME = GRE;
 				SDKROOT = macosx10.9;
 				WRAPPER_EXTENSION = kext;
@@ -288,10 +264,8 @@
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = "-DDEBUG";
-				PRODUCT_NAME = GRE;
-				SDKROOT = macosx10.9;
+				SDKROOT = macosx;
 			};
 			name = Debug;
 		};
@@ -299,11 +273,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GCC_C_LANGUAGE_STANDARD = c99;
-				GCC_VERSION = "";
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				PRODUCT_NAME = GRE;
-				SDKROOT = macosx10.9;
+				SDKROOT = macosx;
 			};
 			name = Release;
 		};
