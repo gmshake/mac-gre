@@ -12,11 +12,6 @@
 
 #include "gre_locks.h"
 #include "gre_ip_encap.h"
-
-#if USE_GRE_HASH
-#include "gre_hash.h"
-#endif
-
 #include "gre_if.h"
 #include "gre_ipfilter.h"
 
@@ -37,11 +32,6 @@ gre_start(kmod_info_t *ki, void *data)
 
 	if (gre_encap_init())
 		goto failed;
-
-#if USE_GRE_HASH
-	if (gre_hash_init() != 0)
-		goto error;
-#endif
 
 	if (gre_proto_register() != 0)
 		goto error;
@@ -72,9 +62,6 @@ error:
 	gre_ip4filter_dispose();
 	gre_if_dispose();
 	gre_proto_unregister();
-#if USE_GRE_HASH
-	gre_hash_dispose();
-#endif
 	gre_encap_dispose();
 	gre_locks_dispose();
 
@@ -113,9 +100,6 @@ gre_stop(kmod_info_t *ki, void *data)
 
 	gre_proto_unregister();
 
-#if USE_GRE_HASH
-	gre_hash_dispose();
-#endif
 
 	if (gre_encap_dispose()) {
 		printf("gre: gre_encap_dispose error\n");

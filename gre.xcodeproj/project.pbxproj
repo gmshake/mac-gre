@@ -10,8 +10,6 @@
 		32A4FEBE0562C75700D090E7 /* gre.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A224C3CFF42312311CA2CB7 /* gre.c */; settings = {ATTRIBUTES = (); }; };
 		59059268129E8B5900E567E9 /* gre_if.h in Headers */ = {isa = PBXBuildFile; fileRef = 59059266129E8B5900E567E9 /* gre_if.h */; };
 		59059269129E8B5900E567E9 /* gre_if.c in Sources */ = {isa = PBXBuildFile; fileRef = 59059267129E8B5900E567E9 /* gre_if.c */; };
-		59636A0212D993420013C8D8 /* gre_hash.h in Headers */ = {isa = PBXBuildFile; fileRef = 59636A0012D993420013C8D8 /* gre_hash.h */; };
-		59636A0312D993420013C8D8 /* gre_hash.c in Sources */ = {isa = PBXBuildFile; fileRef = 59636A0112D993420013C8D8 /* gre_hash.c */; };
 		59FEBA2012DEAA620089AA11 /* gre_ip4filter.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FEBA1E12DEAA620089AA11 /* gre_ip4filter.c */; };
 		59FEBA2112DEAA620089AA11 /* gre_ipfilter.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FEBA1F12DEAA620089AA11 /* gre_ipfilter.h */; };
 		6C1F2DF018F2E2B9002EC1E7 /* kernel_build.h in Headers */ = {isa = PBXBuildFile; fileRef = 6C1F2DEF18F2E2B9002EC1E7 /* kernel_build.h */; };
@@ -35,8 +33,6 @@
 		5927A9FA12B5295C00E4DED1 /* License.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; path = License.rtf; sourceTree = "<group>"; };
 		593D97D612DEB917005EE3D3 /* org.gmshake.launchd.GRE.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = org.gmshake.launchd.GRE.plist; sourceTree = "<group>"; };
 		595C460012B66EA700A64934 /* postinstall.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = postinstall.sh; sourceTree = "<group>"; };
-		59636A0012D993420013C8D8 /* gre_hash.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gre_hash.h; sourceTree = "<group>"; };
-		59636A0112D993420013C8D8 /* gre_hash.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gre_hash.c; sourceTree = "<group>"; };
 		59FEBA1E12DEAA620089AA11 /* gre_ip4filter.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gre_ip4filter.c; sourceTree = "<group>"; };
 		59FEBA1F12DEAA620089AA11 /* gre_ipfilter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gre_ipfilter.h; sourceTree = "<group>"; };
 		6C1F2DEF18F2E2B9002EC1E7 /* kernel_build.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kernel_build.h; sourceTree = "<group>"; };
@@ -104,8 +100,6 @@
 				59FEBA1F12DEAA620089AA11 /* gre_ipfilter.h */,
 				59FEBA1E12DEAA620089AA11 /* gre_ip4filter.c */,
 				6CAC25101BC480F6005FA637 /* gre_ip6filter.c */,
-				59636A0012D993420013C8D8 /* gre_hash.h */,
-				59636A0112D993420013C8D8 /* gre_hash.c */,
 				6C1F2DEF18F2E2B9002EC1E7 /* kernel_build.h */,
 			);
 			name = Source;
@@ -132,7 +126,6 @@
 			files = (
 				59059268129E8B5900E567E9 /* gre_if.h in Headers */,
 				6CE6C2871BC0657C00B49C61 /* gre_locks.h in Headers */,
-				59636A0212D993420013C8D8 /* gre_hash.h in Headers */,
 				6CAC250F1BC4560A005FA637 /* gre_ip_encap.h in Headers */,
 				6C1F2DF018F2E2B9002EC1E7 /* kernel_build.h in Headers */,
 				59FEBA2112DEAA620089AA11 /* gre_ipfilter.h in Headers */,
@@ -213,7 +206,6 @@
 			files = (
 				32A4FEBE0562C75700D090E7 /* gre.c in Sources */,
 				59059269129E8B5900E567E9 /* gre_if.c in Sources */,
-				59636A0312D993420013C8D8 /* gre_hash.c in Sources */,
 				6CAC250E1BC4560A005FA637 /* gre_ip_encap.c in Sources */,
 				6CE6C2861BC0657C00B49C61 /* gre_locks.c in Sources */,
 				6CAC25111BC480F6005FA637 /* gre_ip6filter.c in Sources */,

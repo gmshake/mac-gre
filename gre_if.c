@@ -1419,10 +1419,6 @@ static errno_t
 gre_media_input(__unused ifnet_t ifp, protocol_family_t protocol, mbuf_t m,
 		__unused char *frame_header)
 {
-#ifdef DEBUG
-	printf("%s: protocol: %d\n", __FUNCTION__, protocol);
-#endif
-
 	errno_t err = proto_input(protocol, m);
 #ifdef DEBUG
 	if (err)
