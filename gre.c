@@ -12,7 +12,7 @@
 
 #include "gre_locks.h"
 #include "gre_ip_encap.h"
-#include "gre_if.h"
+#include "if_gre.h"
 #include "gre_ipfilter.h"
 
 

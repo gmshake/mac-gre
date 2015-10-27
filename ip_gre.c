@@ -55,7 +55,7 @@
 
 #include "kernel_build.h"
 #include "gre_ip_encap.h"
-#include "gre_if.h"
+#include "if_gre.h"
 
 
 #define	GRE_TTL 30
