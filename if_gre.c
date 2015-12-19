@@ -135,24 +135,14 @@ SYSCTL_INT(_net_gre, OID_AUTO, max_nesting, CTLTYPE_INT | CTLFLAG_RW, &max_gre_n
 inline void
 gre_sc_reference(struct gre_softc *sc)
 {
-#ifdef DEBUG
-	if (sc == NULL) {
-		printf("%s: invalid sc(NULL)\n", __FUNCTION__);
-		return;
-	}
-#endif
+
 	OSIncrementAtomic(&sc->sc_refcnt);
 }
 
 inline SInt32
 gre_sc_release(struct gre_softc *sc)
 {
-#ifdef DEBUG
-	if (sc == NULL) {
-		printf("%s: invalid sc(NULL) should panic\n", __FUNCTION__);
-		return -1;
-	}
-#endif
+
 	SInt32 oldval = OSDecrementAtomic(&sc->sc_refcnt);
 	if (oldval == 1) { // now refcnt reach 0, free safely
 		gre_sc_free(sc);
@@ -181,36 +171,23 @@ gre_proto_register(void)
 		return ENOENT;
 	}
 
+#ifdef DEBUG
+	printf("%s: gre_if_family=%d \n", __FUNCTION__, gre_if_family);
+#endif
 
 	err = proto_register_plumber(PF_INET, gre_if_family, gre_attach_proto_family, gre_detach_proto_family);
 	if (err) {
 		printf("%s: could not register PF_INET protocol family: %d\n", __FUNCTION__, err);
-#ifdef DEBUG
-		if (err == EEXIST)
-			printf("%s proto(PF_INET, %d) plumber exist\n", __FUNCTION__, gre_if_family);
-#endif
 		goto fail;
 	}
-
-#ifdef DEBUG
-	printf("%s proto_register_plumber(PF_INET, %d) ok\n", __FUNCTION__, gre_if_family);
-#endif
 
 	err = proto_register_plumber(PF_INET6, gre_if_family, gre_attach_proto_family, gre_detach_proto_family);
 	if (err) {
 		proto_unregister_plumber(PF_INET, gre_if_family);
 
 		printf("%s: could not register PF_INET6 protocol family: %d\n", __FUNCTION__, err);
-#ifdef DEBUG
-		if (err == EEXIST)
-			printf("%s proto(PF_INET6, %d) plumber exist\n", __FUNCTION__, gre_if_family);
-#endif
 		goto fail;
 	}
-
-#ifdef DEBUG
-	printf("%s proto_register_plumber(PF_INET6, %d) ok\n", __FUNCTION__, gre_if_family);
-#endif
 
 
 #ifdef DEBUG
@@ -232,16 +209,9 @@ gre_proto_unregister(void)
 	printf("%s ...\n", __FUNCTION__);
 #endif
 
-
 	proto_unregister_plumber(PF_INET6, gre_if_family);
-#ifdef DEBUG
-	printf("%s proto_unregister_plumber(PF_INET6, %d) ok\n", __FUNCTION__, gre_if_family);
-#endif
 
 	proto_unregister_plumber(PF_INET, gre_if_family);
-#ifdef DEBUG
-	printf("%s proto_unregister_plumber(PF_INET, %d) ok\n", __FUNCTION__, gre_if_family);
-#endif
 
 #ifdef DEBUG
 	printf("%s: done\n", __FUNCTION__);
@@ -584,16 +554,6 @@ gre_sc_allocate(u_int32_t unit)
 static void
 gre_sc_free(struct gre_softc *sc)
 {
-#ifdef DEBUG
-	printf("%s ...\n", __FUNCTION__);
-
-	if (sc == NULL || sc->gre_ifp == NULL) {
-		// Should panic
-		printf("%s: invalid parameters: sc = %p, sc->sc_ifp = %p, should panic!!!\n", __FUNCTION__, sc, sc == NULL ? NULL : sc->gre_ifp);
-		return;
-	}
-#endif
-
 	ifnet_t ifp = sc->gre_ifp;
 
 	sx_xlock(gre_ioctl_sx);
@@ -606,9 +566,6 @@ gre_sc_free(struct gre_softc *sc)
 	// clean up
 	gre_cleanup_family(ifp, PF_INET6);
 	gre_cleanup_family(ifp, PF_INET);
-
-	//ifnet_detach_protocol(ifp, PF_INET6);
-	//ifnet_detach_protocol(ifp, PF_INET);
 
 	gre_detach_proto_family(ifp, PF_INET6);
 	gre_detach_proto_family(ifp, PF_INET);

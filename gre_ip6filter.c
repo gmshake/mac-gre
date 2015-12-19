@@ -11,7 +11,6 @@
 
 #include <netinet/kpi_ipfilter.h>
 
-
 #include "gre_locks.h"
 #include "gre_ip_encap.h"
 #include "if_gre.h"
